@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Figtree:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+    --background: 0 0% 98%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 330 81% 60%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 32%;
+    --accent: 45 93% 47%;
+    --accent-foreground: 240 10% 4%;
+    --destructive: 348 83% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 8%;
+    --input: 240 10% 88%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+    --success: 142 71% 45%;
+    --warning: 45 93% 47%;
+}
+
+* { border-color: hsl(var(--input)); }
+
+body {
+    margin: 0;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Figtree', 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+    font-family: 'Space Grotesk', 'Figtree', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+/* Neo-brutalist elevation */
+.brutal-shadow {
+    box-shadow: 4px 4px 0px 0px #18181B;
+}
+.brutal-shadow-lg {
+    box-shadow: 6px 6px 0px 0px #18181B;
+}
+.brutal-shadow-hover {
+    transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.brutal-shadow-hover:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0px 0px #18181B;
+}
+
+/* Selection */
+::selection {
+    background: #EC4899;
+    color: white;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #FAFAFA; }
+::-webkit-scrollbar-thumb {
+    background: #18181B;
+    border-radius: 8px;
+    border: 2px solid #FAFAFA;
+}
+
+/* Grid noise texture on hero */
+.grain-texture {
+    position: relative;
+}
+.grain-texture::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(#18181B 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.06;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .brutal-shadow-hover:hover {
+        transform: none;
+    }
+}

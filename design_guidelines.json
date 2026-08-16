@@ -1,0 +1,84 @@
+{
+  "theme": "light",
+  "design_philosophy": "Neo-Brutalism Soft & Energetic. A modern, vibrant university vibe that breaks the stiff corporate mold. It blends hard structural lines (1px/2px dark borders) with soft, energetic pastel/neon accents to feel approachable, youthful, and functional. Contrast is created via flat solid colors and distinct outlines, avoiding generic drop-shadows or gradients.",
+  "typography": {
+    "heading_font": "Clash Display or Outfit",
+    "body_font": "Figtree or Manrope",
+    "rules": {
+      "H1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight",
+      "H2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+      "H3": "text-xl sm:text-2xl font-semibold",
+      "body": "text-base leading-relaxed",
+      "labels": "text-xs font-bold uppercase tracking-[0.1em]"
+    }
+  },
+  "colors": {
+    "background": "#FAFAFA",
+    "surface": "#FFFFFF",
+    "text_primary": "#0A0A0A",
+    "text_secondary": "#52525B",
+    "borders": "#18181B",
+    "accents": {
+      "primary": "#3B82F6",
+      "primary_hover": "#2563EB",
+      "secondary": "#EC4899",
+      "warning": "#EAB308",
+      "success": "#22C55E",
+      "club_palette_suggestions": ["#8B5CF6", "#F97316", "#06B6D4", "#F43F5E", "#10B981"]
+    }
+  },
+  "surface_strategies": {
+    "cards": "Flat solid surfaces with a crisp 2px border (#18181B). No soft drop shadows; instead, use hard offset shadows on hover (e.g., hover:shadow-[4px_4px_0px_#18181B] hover:-translate-y-1 transition-all).",
+    "buttons": "Pill-shaped or slightly rounded (rounded-lg) with 2px solid dark borders. High contrast text.",
+    "inputs": "Flat background with 2px borders. On focus, add a vibrant ring (focus:ring-2 focus:ring-primary focus:border-primary).",
+    "headers": "Solid background with a hard 1px/2px bottom border. Avoid glassmorphism for this specific Neo-Brutalism look to keep it grounded and legible."
+  },
+  "layouts_and_grids": {
+    "dashboard_metrics": "MODE B (High Density Grid). Base grid-cols-1 md:grid-cols-3 lg:grid-cols-4. Tight gap (gap-4). Every pixel utilized, identical widget heights.",
+    "public_submission_form": "MODE A (Tetris Grid). grid-cols-1 lg:grid-cols-12 gap-8. Left side (col-span-5) features a sticky energetic campus image or 3D abstract shape; Right side (col-span-7) houses the bold form fields.",
+    "club_directory": "Responsive grid (grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6). Cards should be highly vibrant, using the club's brand_color as the top accent border or background tint.",
+    "content_calendar": "Standard CSS Grid for calendar days. Dense, information-rich, but color-coded by platform (e.g., Instagram=Pink, LinkedIn=Blue, Twitter=Black)."
+  },
+  "visual_enhancers": {
+    "icons": "lucide-react (Bold, 2px stroke width to match the Neo-Brutalist borders)",
+    "motion": "Framer Motion. Use spring physics for micro-interactions (stiffness: 400, damping: 25). Staggered entrances for list items and directory cards.",
+    "empty_states": "Playful and large. Use bold oversized typography and abstract shapes rather than sad generic illustrations."
+  },
+  "components": {
+    "navigation": "Side navigation for admins (dense, icon+label, sharp hover states). Top horizontal navigation for public/student view with a prominent 'Submit Post' CTA.",
+    "tables": "Shadcn UI table, customized to remove standard subtle gray borders. Use 1px solid black borders, alternating row colors (white/off-white) and vibrant badges for statuses (Pending=Yellow, Approved=Green, Rejected=Red).",
+    "modals": "Slide-over (Sheet) for Admin Review Queue items to allow side-by-side reading of the request while maintaining context of the list."
+  },
+  "media": {
+    "image_urls": {
+      "public_hero_image": {
+        "url": "https://images.unsplash.com/photo-1549057446-9f5c6ac91a04?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwbGlmZSUyMGFjdGl2ZXxlbnwwfHx8fDE3ODY4MjE2MDd8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Active students walking together. Use on the public submission landing page."
+      },
+      "campus_building": {
+        "url": "https://images.unsplash.com/photo-1730173777675-7cb481bb5a0f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHw0fHx1bml2ZXJzaXR5JTIwc3R1ZGVudHMlMjBjYW1wdXN8ZW58MHx8fHwxNzg2ODIxNjA3fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Tall university building. Use as a background accent or auth page banner."
+      },
+      "abstract_avatars": [
+        "https://images.unsplash.com/photo-1622547748225-3fc4abd2cca0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMDNEJTIwdmlicmFudCUyMHNoYXBlfGVufDB8fHx8MTc4NjgyMTYxM3ww&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMDNEJTIwdmlicmFudCUyMHNoYXBlfGVufDB8fHx8MTc4NjgyMTYxM3ww&ixlib=rb-4.1.0&q=85"
+      ]
+    }
+  },
+  "libraries": {
+    "required": ["framer-motion", "recharts", "lucide-react", "clsx", "tailwind-merge", "sonner", "date-fns"]
+  },
+  "accessibility": {
+    "contrast": "Enforce strict contrast ratios. Black text on vibrant colors is required.",
+    "focus": "All interactive elements must have focus-visible outlines with a 2px offset.",
+    "motion": "Respect prefers-reduced-motion media query by disabling hover translations."
+  },
+  "instructions_to_main_agent": [
+    "Use strict Neo-Brutalist soft styling: Elements should have border-2 border-black rounded-lg shadow-none. On hover, apply shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] and -translate-y-1.",
+    "Do NOT use standard soft SaaS drop shadows (e.g., shadow-md, shadow-lg). Replace them with hard solid color offset shadows.",
+    "Do NOT center align text globally. Align left for readability.",
+    "Include 'data-testid' attributes on all interactive elements (buttons, inputs, links).",
+    "Use Recharts for the Admin Dashboard (submissions/posts breakdown) and style the charts with solid, vibrant colors and sharp borders, avoiding smooth gradients.",
+    "For the public submission form, build a wizard/multi-step layout if necessary, keeping it visually engaging with large click targets."
+  ]
+}
