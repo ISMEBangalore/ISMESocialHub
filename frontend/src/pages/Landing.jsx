@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Sparkles, Send, Calendar, Users, LogIn, ArrowRight } from "lucide-react";
+import { Sparkles, Send, Calendar, Users, LogIn, ArrowRight, Search } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const HERO_IMG = "https://images.unsplash.com/photo-1549057446-9f5c6ac91a04?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwbGlmZSUyMGFjdGl2ZXxlbnwwfHx8fDE3ODY4MjE2MDd8MA&ixlib=rb-4.1.0&q=85";
@@ -46,6 +46,10 @@ export default function Landing() {
               </Link>
             )}
           </div>
+
+          <Link to="/track" data-testid="hero-track-link" className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-neutral-600 hover:text-black">
+            <Search className="w-4 h-4" strokeWidth={2.5} /> Already submitted something? Track it here
+          </Link>
 
           <div className="mt-10 grid sm:grid-cols-3 gap-3">
             {[

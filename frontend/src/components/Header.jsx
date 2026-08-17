@@ -5,7 +5,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Inbox, CalendarDays, Users, LogOut, Send, Menu, X, User2 } from "lucide-react";
+import { LayoutDashboard, Inbox, CalendarDays, Users, LogOut, Send, Menu, X, User2, Search } from "lucide-react";
 import { useState } from "react";
 
 const memberLinks = [
@@ -62,6 +62,11 @@ export default function Header() {
         )}
 
         <div className="flex items-center gap-2">
+          <Link to="/track" data-testid="nav-track" className="hidden sm:block">
+            <Button variant="outline" className="border-2 border-black rounded-full font-bold">
+              <Search className="w-4 h-4 mr-1.5" strokeWidth={2.5} /> Track submission
+            </Button>
+          </Link>
           <Link to="/submit" data-testid="nav-submit-cta" className="hidden sm:block">
             <Button className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white border-2 border-black rounded-full brutal-shadow brutal-shadow-hover font-bold">
               <Send className="w-4 h-4 mr-1.5" strokeWidth={2.5} /> Submit Post
@@ -115,6 +120,11 @@ export default function Header() {
           ))}
           <Link to="/submit" onClick={() => setOpen(false)} data-testid="m-nav-submit">
             <Button className="w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white border-2 border-black rounded-full font-bold">Submit Post</Button>
+          </Link>
+          <Link to="/track" onClick={() => setOpen(false)} data-testid="m-nav-track">
+            <Button variant="outline" className="w-full border-2 border-black rounded-full font-bold">
+              <Search className="w-4 h-4 mr-1.5" strokeWidth={2.5} /> Track submission
+            </Button>
           </Link>
           {!user && (
             <Link to="/login" onClick={() => setOpen(false)} data-testid="m-nav-login">
