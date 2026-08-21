@@ -42,18 +42,18 @@ function PostForm({ initial, clubs, onSave, onClose }) {
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-xs font-bold uppercase tracking-widest">Title</Label>
-        <Input data-testid="post-title" value={form.title} onChange={set("title")} className="border-2 border-black rounded-lg h-11 mt-1" />
+        <Label htmlFor="post-title" className="text-xs font-bold uppercase tracking-widest">Title</Label>
+        <Input id="post-title" data-testid="post-title" value={form.title} onChange={set("title")} className="border-2 border-black rounded-lg h-11 mt-1" />
       </div>
       <div>
-        <Label className="text-xs font-bold uppercase tracking-widest">Content</Label>
-        <Textarea data-testid="post-content" rows={4} value={form.content} onChange={set("content")} className="border-2 border-black rounded-lg mt-1" />
+        <Label htmlFor="post-content" className="text-xs font-bold uppercase tracking-widest">Content</Label>
+        <Textarea id="post-content" data-testid="post-content" rows={4} value={form.content} onChange={set("content")} className="border-2 border-black rounded-lg mt-1" />
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Club</Label>
+          <Label htmlFor="post-club" className="text-xs font-bold uppercase tracking-widest">Club</Label>
           <Select value={form.club_id || "none"} onValueChange={(v) => set("club_id")(v === "none" ? "" : v)}>
-            <SelectTrigger data-testid="post-club" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+            <SelectTrigger id="post-club" aria-label="Club" data-testid="post-club" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue placeholder="Unassigned" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Unassigned</SelectItem>
               {clubs.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -61,55 +61,55 @@ function PostForm({ initial, clubs, onSave, onClose }) {
           </Select>
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Platform</Label>
+          <Label htmlFor="post-platform" className="text-xs font-bold uppercase tracking-widest">Platform</Label>
           <Select value={form.platform} onValueChange={set("platform")}>
-            <SelectTrigger data-testid="post-platform" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="post-platform" aria-label="Platform" data-testid="post-platform" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>{PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Post type</Label>
+          <Label htmlFor="post-type" className="text-xs font-bold uppercase tracking-widest">Post type</Label>
           <Select value={form.post_type} onValueChange={set("post_type")}>
-            <SelectTrigger data-testid="post-type" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="post-type" aria-label="Post type" data-testid="post-type" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>{TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Status</Label>
+          <Label htmlFor="post-status" className="text-xs font-bold uppercase tracking-widest">Status</Label>
           <Select value={form.status} onValueChange={set("status")}>
-            <SelectTrigger data-testid="post-status" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="post-status" aria-label="Status" data-testid="post-status" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Scheduled date</Label>
-          <Input data-testid="post-scheduled" type="date" value={form.scheduled_date?.slice(0,10) || ""} onChange={set("scheduled_date")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor="post-scheduled" className="text-xs font-bold uppercase tracking-widest">Scheduled date</Label>
+          <Input id="post-scheduled" data-testid="post-scheduled" type="date" value={form.scheduled_date?.slice(0,10) || ""} onChange={set("scheduled_date")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Published date</Label>
-          <Input data-testid="post-published" type="date" value={form.published_date?.slice(0,10) || ""} onChange={set("published_date")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor="post-published" className="text-xs font-bold uppercase tracking-widest">Published date</Label>
+          <Input id="post-published" data-testid="post-published" type="date" value={form.published_date?.slice(0,10) || ""} onChange={set("published_date")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Media URL</Label>
-          <Input data-testid="post-media" value={form.media_url} onChange={set("media_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor="post-media" className="text-xs font-bold uppercase tracking-widest">Media URL</Label>
+          <Input id="post-media" data-testid="post-media" value={form.media_url} onChange={set("media_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Live URL</Label>
-          <Input data-testid="post-live" value={form.live_url} onChange={set("live_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor="post-live" className="text-xs font-bold uppercase tracking-widest">Live URL</Label>
+          <Input id="post-live" data-testid="post-live" value={form.live_url} onChange={set("live_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
       </div>
       <div>
-        <Label className="text-xs font-bold uppercase tracking-widest">Tags (comma separated)</Label>
-        <Input data-testid="post-tags" value={Array.isArray(form.tags) ? form.tags.join(", ") : form.tags} onChange={set("tags")} className="border-2 border-black rounded-lg h-11 mt-1" />
+        <Label htmlFor="post-tags" className="text-xs font-bold uppercase tracking-widest">Tags (comma separated)</Label>
+        <Input id="post-tags" data-testid="post-tags" value={Array.isArray(form.tags) ? form.tags.join(", ") : form.tags} onChange={set("tags")} className="border-2 border-black rounded-lg h-11 mt-1" />
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div><Label className="text-xs font-bold uppercase tracking-widest">Likes</Label><Input data-testid="post-likes" type="number" value={form.likes} onChange={setNum("likes")} className="border-2 border-black rounded-lg h-11 mt-1" /></div>
-        <div><Label className="text-xs font-bold uppercase tracking-widest">Comments</Label><Input data-testid="post-comments" type="number" value={form.comments} onChange={setNum("comments")} className="border-2 border-black rounded-lg h-11 mt-1" /></div>
-        <div><Label className="text-xs font-bold uppercase tracking-widest">Shares</Label><Input data-testid="post-shares" type="number" value={form.shares} onChange={setNum("shares")} className="border-2 border-black rounded-lg h-11 mt-1" /></div>
+        <div><Label htmlFor="post-likes" className="text-xs font-bold uppercase tracking-widest">Likes</Label><Input id="post-likes" data-testid="post-likes" type="number" value={form.likes} onChange={setNum("likes")} className="border-2 border-black rounded-lg h-11 mt-1" /></div>
+        <div><Label htmlFor="post-comments" className="text-xs font-bold uppercase tracking-widest">Comments</Label><Input id="post-comments" data-testid="post-comments" type="number" value={form.comments} onChange={setNum("comments")} className="border-2 border-black rounded-lg h-11 mt-1" /></div>
+        <div><Label htmlFor="post-shares" className="text-xs font-bold uppercase tracking-widest">Shares</Label><Input id="post-shares" data-testid="post-shares" type="number" value={form.shares} onChange={setNum("shares")} className="border-2 border-black rounded-lg h-11 mt-1" /></div>
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" data-testid="post-cancel" onClick={onClose} className="border-2 border-black rounded-full font-bold">Cancel</Button>
-        <Button data-testid="post-save" onClick={save} className="bg-blue-500 hover:bg-blue-600 text-white border-2 border-black rounded-full font-bold">Save</Button>
+        <Button data-testid="post-save" onClick={save} className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-black rounded-full font-bold">Save</Button>
       </div>
     </div>
   );
@@ -239,7 +239,7 @@ export default function Feed() {
         {isAdmin && (
           <Dialog open={openNew} onOpenChange={setOpenNew}>
             <DialogTrigger asChild>
-              <Button data-testid="feed-new-post" className="bg-blue-500 hover:bg-blue-600 text-white border-2 border-black rounded-full brutal-shadow-hover font-bold">
+              <Button data-testid="feed-new-post" className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-black rounded-full brutal-shadow-hover font-bold">
                 <Plus className="w-4 h-4 mr-1" /> New post
               </Button>
             </DialogTrigger>
@@ -253,21 +253,21 @@ export default function Feed() {
 
       <div className="flex flex-wrap gap-3">
         <Select value={platform} onValueChange={setPlatform}>
-          <SelectTrigger data-testid="filter-platform" className="border-2 border-black rounded-full h-10 w-40 font-bold"><SelectValue placeholder="Platform" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by platform" data-testid="filter-platform" className="border-2 border-black rounded-full h-10 w-40 font-bold"><SelectValue placeholder="Platform" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All platforms</SelectItem>
             {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={club} onValueChange={setClub}>
-          <SelectTrigger data-testid="filter-club" className="border-2 border-black rounded-full h-10 w-48 font-bold"><SelectValue placeholder="Club" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by club" data-testid="filter-club" className="border-2 border-black rounded-full h-10 w-48 font-bold"><SelectValue placeholder="Club" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All clubs</SelectItem>
             {clubs.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger data-testid="filter-status" className="border-2 border-black rounded-full h-10 w-40 font-bold"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by status" data-testid="filter-status" className="border-2 border-black rounded-full h-10 w-40 font-bold"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}

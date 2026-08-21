@@ -46,12 +46,12 @@ export default function TrackSubmission() {
 
       <div className="mt-6 border-2 border-black rounded-2xl bg-white p-5 grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Email</Label>
-          <Input data-testid="track-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor="track-email" className="text-xs font-bold uppercase tracking-widest">Email</Label>
+          <Input id="track-email" data-testid="track-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Submission ID (optional)</Label>
-          <Input data-testid="track-id" value={id} onChange={(e) => setId(e.target.value)} className="border-2 border-black rounded-lg h-11 mt-1 font-mono text-xs" />
+          <Label htmlFor="track-id" className="text-xs font-bold uppercase tracking-widest">Submission ID (optional)</Label>
+          <Input id="track-id" data-testid="track-id" value={id} onChange={(e) => setId(e.target.value)} className="border-2 border-black rounded-lg h-11 mt-1 font-mono text-xs" />
         </div>
         <Button data-testid="track-search" onClick={load} disabled={!email || busy} className="h-11 bg-black hover:bg-neutral-800 text-white border-2 border-black rounded-lg font-bold">
           <RefreshCw className={`w-4 h-4 mr-2 ${busy ? "animate-spin" : ""}`} /> Load
@@ -63,7 +63,7 @@ export default function TrackSubmission() {
           <div className="border-2 border-dashed border-black rounded-2xl p-10 text-center bg-white">
             <div className="font-display text-2xl font-black">No submissions yet</div>
             <p className="text-neutral-500 mt-1">Once you submit content, its status will show up here.</p>
-            <Link to="/submit"><Button className="mt-4 bg-fuchsia-500 hover:bg-fuchsia-600 text-white border-2 border-black rounded-full font-bold">Submit content</Button></Link>
+            <Link to="/submit"><Button className="mt-4 bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-2 border-black rounded-full font-bold">Submit content</Button></Link>
           </div>
         )}
         {submissions.map((s) => (

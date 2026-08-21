@@ -28,7 +28,7 @@ export default function Landing() {
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/submit" data-testid="hero-submit-btn">
-              <Button size="lg" className="bg-blue-500 hover:bg-blue-600 text-white border-2 border-black rounded-full brutal-shadow brutal-shadow-hover font-bold text-base">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-black rounded-full brutal-shadow brutal-shadow-hover font-bold text-base">
                 <Send className="w-5 h-5 mr-2" strokeWidth={2.5} /> Submit content
               </Button>
             </Link>

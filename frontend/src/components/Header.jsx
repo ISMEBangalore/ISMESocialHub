@@ -68,7 +68,7 @@ export default function Header() {
             </Button>
           </Link>
           <Link to="/submit" data-testid="nav-submit-cta" className="hidden sm:block">
-            <Button className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white border-2 border-black rounded-full brutal-shadow brutal-shadow-hover font-bold">
+            <Button className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-2 border-black rounded-full brutal-shadow brutal-shadow-hover font-bold">
               <Send className="w-4 h-4 mr-1.5" strokeWidth={2.5} /> Submit Post
             </Button>
           </Link>
@@ -119,7 +119,7 @@ export default function Header() {
             </NavLink>
           ))}
           <Link to="/submit" onClick={() => setOpen(false)} data-testid="m-nav-submit">
-            <Button className="w-full bg-fuchsia-500 hover:bg-fuchsia-600 text-white border-2 border-black rounded-full font-bold">Submit Post</Button>
+            <Button className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-2 border-black rounded-full font-bold">Submit Post</Button>
           </Link>
           <Link to="/track" onClick={() => setOpen(false)} data-testid="m-nav-track">
             <Button variant="outline" className="w-full border-2 border-black rounded-full font-bold">

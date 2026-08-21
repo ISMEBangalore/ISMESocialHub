@@ -40,16 +40,16 @@ export default function Login() {
 
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div>
-            <Label className="text-xs font-bold uppercase tracking-widest">Email</Label>
-            <Input data-testid="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+            <Label htmlFor="login-email" className="text-xs font-bold uppercase tracking-widest">Email</Label>
+            <Input id="login-email" data-testid="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
               className="border-2 border-black rounded-lg h-11 mt-1 focus-visible:ring-blue-500" />
           </div>
           <div>
-            <Label className="text-xs font-bold uppercase tracking-widest">Password</Label>
-            <Input data-testid="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
+            <Label htmlFor="login-password" className="text-xs font-bold uppercase tracking-widest">Password</Label>
+            <Input id="login-password" data-testid="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
               className="border-2 border-black rounded-lg h-11 mt-1 focus-visible:ring-blue-500" />
           </div>
-          <Button data-testid="login-submit" disabled={busy} type="submit" className="w-full h-11 bg-blue-500 hover:bg-blue-600 text-white border-2 border-black rounded-lg font-bold brutal-shadow-hover">
+          <Button data-testid="login-submit" disabled={busy} type="submit" className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white border-2 border-black rounded-lg font-bold brutal-shadow-hover">
             {busy ? "Signing in…" : "Sign in"}
           </Button>
         </form>

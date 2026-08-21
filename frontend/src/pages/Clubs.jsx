@@ -30,47 +30,47 @@ function ClubForm({ initial, onSave, onClose }) {
     <div className="space-y-4">
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Club name</Label>
-          <Input data-testid="club-name" value={f.name} onChange={set("name")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor="club-name" className="text-xs font-bold uppercase tracking-widest">Club name</Label>
+          <Input id="club-name" data-testid="club-name" value={f.name} onChange={set("name")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Brand color</Label>
+          <Label htmlFor="club-color-text" className="text-xs font-bold uppercase tracking-widest">Brand color</Label>
           <div className="flex gap-2 items-center mt-1">
-            <Input data-testid="club-color" type="color" value={f.brand_color} onChange={set("brand_color")} className="border-2 border-black rounded-lg h-11 w-16 p-1" />
-            <Input value={f.brand_color} onChange={set("brand_color")} className="border-2 border-black rounded-lg h-11 flex-1 font-mono" />
+            <Input id="club-color" aria-label="Brand color picker" data-testid="club-color" type="color" value={f.brand_color} onChange={set("brand_color")} className="border-2 border-black rounded-lg h-11 w-16 p-1" />
+            <Input id="club-color-text" value={f.brand_color} onChange={set("brand_color")} className="border-2 border-black rounded-lg h-11 flex-1 font-mono" />
           </div>
         </div>
       </div>
       <div>
-        <Label className="text-xs font-bold uppercase tracking-widest">Description</Label>
-        <Textarea data-testid="club-desc" rows={3} value={f.description} onChange={set("description")} className="border-2 border-black rounded-lg mt-1" />
+        <Label htmlFor="club-desc" className="text-xs font-bold uppercase tracking-widest">Description</Label>
+        <Textarea id="club-desc" data-testid="club-desc" rows={3} value={f.description} onChange={set("description")} className="border-2 border-black rounded-lg mt-1" />
       </div>
       <div>
-        <Label className="text-xs font-bold uppercase tracking-widest">Logo URL</Label>
-        <Input data-testid="club-logo" value={f.logo_url} onChange={set("logo_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
+        <Label htmlFor="club-logo" className="text-xs font-bold uppercase tracking-widest">Logo URL</Label>
+        <Input id="club-logo" data-testid="club-logo" value={f.logo_url} onChange={set("logo_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Lead name</Label>
-          <Input data-testid="club-lead-name" value={f.lead_name} onChange={set("lead_name")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor="club-lead-name" className="text-xs font-bold uppercase tracking-widest">Lead name</Label>
+          <Input id="club-lead-name" data-testid="club-lead-name" value={f.lead_name} onChange={set("lead_name")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
         <div>
-          <Label className="text-xs font-bold uppercase tracking-widest">Lead email</Label>
-          <Input data-testid="club-lead-email" type="email" value={f.lead_email} onChange={set("lead_email")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor="club-lead-email" className="text-xs font-bold uppercase tracking-widest">Lead email</Label>
+          <Input id="club-lead-email" data-testid="club-lead-email" type="email" value={f.lead_email} onChange={set("lead_email")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         {[["instagram","Instagram"],["linkedin","LinkedIn"],["twitter","Twitter/X"],["youtube","YouTube"],["facebook","Facebook"]].map(([k, l]) => (
           <div key={k}>
-            <Label className="text-xs font-bold uppercase tracking-widest">{l} handle</Label>
-            <Input data-testid={`club-${k}`} value={f[k]} onChange={set(k)} className="border-2 border-black rounded-lg h-11 mt-1" placeholder={`@${k}`} />
+            <Label htmlFor={`club-${k}`} className="text-xs font-bold uppercase tracking-widest">{l} handle</Label>
+            <Input id={`club-${k}`} data-testid={`club-${k}`} value={f[k]} onChange={set(k)} className="border-2 border-black rounded-lg h-11 mt-1" placeholder={`@${k}`} />
           </div>
         ))}
       </div>
       <div>
-        <Label className="text-xs font-bold uppercase tracking-widest">Status</Label>
+        <Label htmlFor="club-status" className="text-xs font-bold uppercase tracking-widest">Status</Label>
         <Select value={f.status} onValueChange={set("status")}>
-          <SelectTrigger data-testid="club-status" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="club-status" aria-label="Status" data-testid="club-status" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
@@ -79,7 +79,7 @@ function ClubForm({ initial, onSave, onClose }) {
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose} data-testid="club-cancel" className="border-2 border-black rounded-full font-bold">Cancel</Button>
-        <Button onClick={save} data-testid="club-save" className="bg-blue-500 hover:bg-blue-600 text-white border-2 border-black rounded-full font-bold">Save</Button>
+        <Button onClick={save} data-testid="club-save" className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-black rounded-full font-bold">Save</Button>
       </div>
     </div>
   );
@@ -120,7 +120,7 @@ export default function Clubs() {
         {isAdmin && (
           <Dialog open={openNew} onOpenChange={setOpenNew}>
             <DialogTrigger asChild>
-              <Button data-testid="clubs-new" className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white border-2 border-black rounded-full brutal-shadow-hover font-bold">
+              <Button data-testid="clubs-new" className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-2 border-black rounded-full brutal-shadow-hover font-bold">
                 <Plus className="w-4 h-4 mr-1" /> New club
               </Button>
             </DialogTrigger>

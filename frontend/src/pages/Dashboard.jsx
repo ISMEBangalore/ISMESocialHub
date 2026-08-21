@@ -57,36 +57,50 @@ export default function Dashboard() {
             <h2 className="font-display font-black text-xl">Posts by club</h2>
             <span className="text-xs font-bold uppercase tracking-widest text-neutral-500">Top clubs</span>
           </div>
-          <div style={{ width: "100%", height: 300 }}>
-            <ResponsiveContainer>
-              <BarChart data={data?.by_club || []} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
-                <XAxis dataKey="club_name" tick={{ fontSize: 12, fontWeight: 700 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip cursor={{ fill: "#FAFAFA" }} contentStyle={{ border: "2px solid #18181B", borderRadius: 8, fontWeight: 700 }} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {(data?.by_club || []).map((row, i) => (
-                    <Cell key={i} fill={row.brand_color || "#3B82F6"} stroke="#18181B" strokeWidth={2} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {data && (data.by_club || []).length === 0 ? (
+            <div className="border-2 border-dashed border-black rounded-2xl p-10 text-center" style={{ height: 300 }}>
+              <div className="font-display text-xl font-black">No posts yet</div>
+              <p className="text-neutral-500 mt-1 text-sm">Once posts are published, this chart fills in club by club.</p>
+            </div>
+          ) : (
+            <div style={{ width: "100%", height: 300 }}>
+              <ResponsiveContainer>
+                <BarChart data={data?.by_club || []} margin={{ left: -10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
+                  <XAxis dataKey="club_name" tick={{ fontSize: 12, fontWeight: 700 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip cursor={{ fill: "#FAFAFA" }} contentStyle={{ border: "2px solid #18181B", borderRadius: 8, fontWeight: 700 }} />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {(data?.by_club || []).map((row, i) => (
+                      <Cell key={i} fill={row.brand_color || "#3B82F6"} stroke="#18181B" strokeWidth={2} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </Card>
 
         <Card className="lg:col-span-2 p-5 border-2 border-black rounded-2xl bg-white">
           <h2 className="font-display font-black text-xl mb-4">Platform mix</h2>
-          <div style={{ width: "100%", height: 300 }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
-                  {pieData.map((p, i) => <Cell key={i} fill={p.color} stroke="#18181B" strokeWidth={2} />)}
-                </Pie>
-                <Tooltip contentStyle={{ border: "2px solid #18181B", borderRadius: 8, fontWeight: 700 }} />
-                <Legend wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {data && pieData.length === 0 ? (
+            <div className="border-2 border-dashed border-black rounded-2xl p-10 text-center" style={{ height: 300 }}>
+              <div className="font-display text-xl font-black">No posts yet</div>
+              <p className="text-neutral-500 mt-1 text-sm">The platform breakdown shows up here once something's published.</p>
+            </div>
+          ) : (
+            <div style={{ width: "100%", height: 300 }}>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
+                    {pieData.map((p, i) => <Cell key={i} fill={p.color} stroke="#18181B" strokeWidth={2} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ border: "2px solid #18181B", borderRadius: 8, fontWeight: 700 }} />
+                  <Legend wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </Card>
       </div>
     </div>

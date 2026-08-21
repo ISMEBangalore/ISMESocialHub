@@ -118,12 +118,12 @@ export default function PublicSubmit() {
           <h2 className="font-display text-xl font-black mb-4">1. About you</h2>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <Label className="text-xs font-bold uppercase tracking-widest">Your name</Label>
-              <Input data-testid="submit-name" value={form.submitter_name} onChange={set("submitter_name")} required className="border-2 border-black rounded-lg h-11 mt-1" />
+              <Label htmlFor="submit-name" className="text-xs font-bold uppercase tracking-widest">Your name</Label>
+              <Input id="submit-name" data-testid="submit-name" value={form.submitter_name} onChange={set("submitter_name")} required className="border-2 border-black rounded-lg h-11 mt-1" />
             </div>
             <div>
-              <Label className="text-xs font-bold uppercase tracking-widest">Email</Label>
-              <Input data-testid="submit-email" type="email" value={form.submitter_email} onChange={set("submitter_email")} required className="border-2 border-black rounded-lg h-11 mt-1" />
+              <Label htmlFor="submit-email" className="text-xs font-bold uppercase tracking-widest">Email</Label>
+              <Input id="submit-email" data-testid="submit-email" type="email" value={form.submitter_email} onChange={set("submitter_email")} required className="border-2 border-black rounded-lg h-11 mt-1" />
             </div>
           </div>
           <div className="mt-4">
@@ -139,9 +139,9 @@ export default function PublicSubmit() {
           </div>
           {form.submitter_role === "Club" && (
             <div className="mt-4">
-              <Label className="text-xs font-bold uppercase tracking-widest">Which club?</Label>
+              <Label htmlFor="submit-club" className="text-xs font-bold uppercase tracking-widest">Which club?</Label>
               <Select value={form.club_id} onValueChange={set("club_id")}>
-                <SelectTrigger data-testid="submit-club" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue placeholder="Choose a club" /></SelectTrigger>
+                <SelectTrigger id="submit-club" aria-label="Which club?" data-testid="submit-club" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue placeholder="Choose a club" /></SelectTrigger>
                 <SelectContent>
                   {clubs.length === 0 && <div className="p-3 text-sm text-neutral-500">No active clubs yet — ask an admin to create one.</div>}
                   {clubs.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -155,38 +155,38 @@ export default function PublicSubmit() {
           <h2 className="font-display text-xl font-black mb-4">2. The content</h2>
           <div className="space-y-4">
             <div>
-              <Label className="text-xs font-bold uppercase tracking-widest">Title / headline</Label>
-              <Input data-testid="submit-title" value={form.title} onChange={set("title")} required maxLength={140} className="border-2 border-black rounded-lg h-11 mt-1" />
+              <Label htmlFor="submit-title" className="text-xs font-bold uppercase tracking-widest">Title / headline</Label>
+              <Input id="submit-title" data-testid="submit-title" value={form.title} onChange={set("title")} required maxLength={140} className="border-2 border-black rounded-lg h-11 mt-1" />
             </div>
             <div>
-              <Label className="text-xs font-bold uppercase tracking-widest">Content / brief</Label>
-              <Textarea data-testid="submit-content" value={form.content} onChange={set("content")} required rows={5}
+              <Label htmlFor="submit-content" className="text-xs font-bold uppercase tracking-widest">Content / brief</Label>
+              <Textarea id="submit-content" data-testid="submit-content" value={form.content} onChange={set("content")} required rows={5}
                 placeholder="What should this post say? Who is it for? Any hashtags?" className="border-2 border-black rounded-lg mt-1" />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-bold uppercase tracking-widest">Suggested platform</Label>
+                <Label htmlFor="submit-platform" className="text-xs font-bold uppercase tracking-widest">Suggested platform</Label>
                 <Select value={form.suggested_platform} onValueChange={set("suggested_platform")}>
-                  <SelectTrigger data-testid="submit-platform" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="submit-platform" aria-label="Suggested platform" data-testid="submit-platform" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label className="text-xs font-bold uppercase tracking-widest">Post type</Label>
+                <Label htmlFor="submit-type" className="text-xs font-bold uppercase tracking-widest">Post type</Label>
                 <Select value={form.post_type} onValueChange={set("post_type")}>
-                  <SelectTrigger data-testid="submit-type" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="submit-type" aria-label="Post type" data-testid="submit-type" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{TYPES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-bold uppercase tracking-widest">Media URL (optional)</Label>
-                <Input data-testid="submit-media" type="url" placeholder="https://drive.google.com/…" value={form.media_url} onChange={set("media_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
+                <Label htmlFor="submit-media" className="text-xs font-bold uppercase tracking-widest">Media URL (optional)</Label>
+                <Input id="submit-media" data-testid="submit-media" type="url" placeholder="https://drive.google.com/…" value={form.media_url} onChange={set("media_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
               </div>
               <div>
-                <Label className="text-xs font-bold uppercase tracking-widest">Publish by (event date)</Label>
-                <Input data-testid="submit-date" type="date" value={form.publish_by} onChange={set("publish_by")} className="border-2 border-black rounded-lg h-11 mt-1" />
+                <Label htmlFor="submit-date" className="text-xs font-bold uppercase tracking-widest">Publish by (event date)</Label>
+                <Input id="submit-date" data-testid="submit-date" type="date" value={form.publish_by} onChange={set("publish_by")} className="border-2 border-black rounded-lg h-11 mt-1" />
               </div>
             </div>
             <div>
@@ -202,7 +202,7 @@ export default function PublicSubmit() {
           </div>
         </div>
 
-        <Button data-testid="submit-final" disabled={busy} type="submit" className="w-full h-14 bg-blue-500 hover:bg-blue-600 text-white border-2 border-black rounded-xl font-bold text-lg brutal-shadow-hover">
+        <Button data-testid="submit-final" disabled={busy} type="submit" className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white border-2 border-black rounded-xl font-bold text-lg brutal-shadow-hover">
           <Send className="w-5 h-5 mr-2" strokeWidth={2.5} /> {busy ? "Submitting…" : "Submit for review"}
         </Button>
       </form>

@@ -43,18 +43,18 @@ export default function Register() {
 
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div>
-            <Label className="text-xs font-bold uppercase tracking-widest">Full name</Label>
-            <Input data-testid="register-name" value={form.name} onChange={set("name")} required
+            <Label htmlFor="register-name" className="text-xs font-bold uppercase tracking-widest">Full name</Label>
+            <Input id="register-name" data-testid="register-name" value={form.name} onChange={set("name")} required
               className="border-2 border-black rounded-lg h-11 mt-1" />
           </div>
           <div>
-            <Label className="text-xs font-bold uppercase tracking-widest">Email</Label>
-            <Input data-testid="register-email" type="email" value={form.email} onChange={set("email")} required
+            <Label htmlFor="register-email" className="text-xs font-bold uppercase tracking-widest">Email</Label>
+            <Input id="register-email" data-testid="register-email" type="email" value={form.email} onChange={set("email")} required
               className="border-2 border-black rounded-lg h-11 mt-1" />
           </div>
           <div>
-            <Label className="text-xs font-bold uppercase tracking-widest">Password (min 6 chars)</Label>
-            <Input data-testid="register-password" type="password" minLength={6} value={form.password} onChange={set("password")} required
+            <Label htmlFor="register-password" className="text-xs font-bold uppercase tracking-widest">Password (min 6 chars)</Label>
+            <Input id="register-password" data-testid="register-password" type="password" minLength={6} value={form.password} onChange={set("password")} required
               className="border-2 border-black rounded-lg h-11 mt-1" />
           </div>
           <Button data-testid="register-submit" disabled={busy} type="submit"
