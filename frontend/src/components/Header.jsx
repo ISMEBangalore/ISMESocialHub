@@ -5,18 +5,22 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Inbox, CalendarDays, Users, LogOut, Send, Menu, X, User2, Search } from "lucide-react";
+import { LayoutDashboard, Inbox, CalendarDays, Calendar, Users, Flag, LogOut, Send, Menu, X, User2, Search } from "lucide-react";
 import { useState } from "react";
 
 const memberLinks = [
   { to: "/feed", label: "Feed", icon: CalendarDays, testId: "nav-feed" },
   { to: "/clubs", label: "Clubs", icon: Users, testId: "nav-clubs" },
+  { to: "/events", label: "Events", icon: Calendar, testId: "nav-events" },
+  { to: "/houses", label: "Houses", icon: Flag, testId: "nav-houses" },
 ];
 const adminLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, testId: "nav-dashboard" },
   { to: "/review", label: "Review Queue", icon: Inbox, testId: "nav-review" },
   { to: "/feed", label: "Feed & Calendar", icon: CalendarDays, testId: "nav-feed" },
   { to: "/clubs", label: "Clubs", icon: Users, testId: "nav-clubs" },
+  { to: "/events", label: "Events", icon: Calendar, testId: "nav-events" },
+  { to: "/houses", label: "Houses", icon: Flag, testId: "nav-houses" },
 ];
 
 export default function Header() {

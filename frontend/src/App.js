@@ -35,7 +35,9 @@ function App() {
             <Route path="/submit" element={<PublicSubmit />} />
             <Route path="/track" element={<TrackSubmission />} />
             <Route path="/my-submissions" element={<TrackSubmission />} />
-            <Route path="/clubs" element={<Clubs />} />
+            <Route path="/clubs" element={<Clubs type="club" />} />
+            <Route path="/events" element={<Clubs type="event" />} />
+            <Route path="/houses" element={<Clubs type="house" />} />
             <Route path="/feed" element={
               <ProtectedRoute><Feed /></ProtectedRoute>
             } />

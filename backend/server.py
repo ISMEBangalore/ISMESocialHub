@@ -164,11 +164,12 @@ class ClubIn(BaseModel):
     facebook: str = ""
     brand_color: str = "#3B82F6"
     status: Literal["active", "inactive"] = "active"
+    type: Literal["club", "event", "house"] = "club"
 
 class SubmissionIn(BaseModel):
     submitter_name: str
     submitter_email: EmailStr
-    submitter_role: Literal["Club", "Student", "Faculty"]
+    submitter_role: Literal["Club", "Student", "Faculty", "Event", "House"]
     club_id: Optional[str] = None
     title: str
     content: str
@@ -334,10 +335,13 @@ async def reset_password(payload: ResetPasswordIn):
 # Clubs
 # -----------------------
 @api.get("/clubs")
-async def list_clubs(status: Optional[str] = None):
+async def list_clubs(status: Optional[str] = None, type: Optional[str] = None):
     q = {}
     if status:
         q["status"] = status
+    if type:
+        # Docs created before the `type` field existed are clubs by default.
+        q["type"] = {"$in": [type, None]} if type == "club" else type
     docs = await db.clubs.find(q, {"_id": 0}).sort("name", 1).to_list(500)
     return docs
 
@@ -380,8 +384,8 @@ async def delete_club(club_id: str, admin: dict = Depends(require_admin)):
 # -----------------------
 @api.post("/submissions")
 async def create_submission(payload: SubmissionIn):
-    if payload.submitter_role == "Club" and not payload.club_id:
-        raise HTTPException(400, "club_id is required when submitter_role is 'Club'")
+    if payload.submitter_role in ("Club", "Event", "House") and not payload.club_id:
+        raise HTTPException(400, f"club_id is required when submitter_role is '{payload.submitter_role}'")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
     doc["submitter_email"] = doc["submitter_email"].lower()

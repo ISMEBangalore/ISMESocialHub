@@ -14,9 +14,15 @@ import { motion } from "framer-motion";
 const PLATFORMS = ["Instagram", "LinkedIn", "Twitter", "YouTube", "Facebook"];
 const TYPES = ["Reel", "Carousel", "Story", "Post", "Video", "Article"];
 
+const ENTITY_ROLES = {
+  Club: { label: "Which club?", placeholder: "Choose a club", empty: "No active clubs yet — ask an admin to create one." },
+  Event: { label: "Which event?", placeholder: "Choose an event", empty: "No active events yet — ask an admin to create one." },
+  House: { label: "Which house?", placeholder: "Choose a house", empty: "No active houses yet — ask an admin to create one." },
+};
+
 export default function PublicSubmit() {
   const nav = useNavigate();
-  const [clubs, setClubs] = useState([]);
+  const [entities, setEntities] = useState({ Club: [], Event: [], House: [] });
   const [form, setForm] = useState({
     submitter_name: "",
     submitter_email: "",
@@ -34,15 +40,19 @@ export default function PublicSubmit() {
   const [done, setDone] = useState(null);
 
   useEffect(() => {
-    api.get("/clubs", { params: { status: "active" } }).then((r) => setClubs(r.data)).catch(() => {});
+    Promise.all([
+      api.get("/clubs", { params: { status: "active", type: "club" } }),
+      api.get("/clubs", { params: { status: "active", type: "event" } }),
+      api.get("/clubs", { params: { status: "active", type: "house" } }),
+    ]).then(([club, event, house]) => setEntities({ Club: club.data, Event: event.data, House: house.data })).catch(() => {});
   }, []);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: typeof v === "string" ? v : v.target.value }));
 
   const submit = async (e) => {
     e.preventDefault();
-    if (form.submitter_role === "Club" && !form.club_id) {
-      toast.error("Please select the club you represent.");
+    if (ENTITY_ROLES[form.submitter_role] && !form.club_id) {
+      toast.error(`Please select the ${form.submitter_role.toLowerCase()} you represent.`);
       return;
     }
     setBusy(true);
@@ -128,8 +138,8 @@ export default function PublicSubmit() {
           </div>
           <div className="mt-4">
             <Label className="text-xs font-bold uppercase tracking-widest">You are a…</Label>
-            <RadioGroup value={form.submitter_role} onValueChange={set("submitter_role")} className="grid grid-cols-3 gap-3 mt-2">
-              {["Student", "Faculty", "Club"].map((r) => (
+            <RadioGroup value={form.submitter_role} onValueChange={(v) => setForm((f) => ({ ...f, submitter_role: v, club_id: "" }))} className="grid grid-cols-3 sm:grid-cols-5 gap-3 mt-2">
+              {["Student", "Faculty", "Club", "Event", "House"].map((r) => (
                 <label key={r} className={`flex items-center gap-2 border-2 border-black rounded-lg px-3 py-2.5 cursor-pointer font-semibold ${form.submitter_role === r ? "bg-yellow-300" : "bg-white"}`}>
                   <RadioGroupItem value={r} id={`role-${r}`} data-testid={`submit-role-${r}`} />
                   {r}
@@ -137,14 +147,14 @@ export default function PublicSubmit() {
               ))}
             </RadioGroup>
           </div>
-          {form.submitter_role === "Club" && (
+          {ENTITY_ROLES[form.submitter_role] && (
             <div className="mt-4">
-              <Label htmlFor="submit-club" className="text-xs font-bold uppercase tracking-widest">Which club?</Label>
+              <Label htmlFor="submit-club" className="text-xs font-bold uppercase tracking-widest">{ENTITY_ROLES[form.submitter_role].label}</Label>
               <Select value={form.club_id} onValueChange={set("club_id")}>
-                <SelectTrigger id="submit-club" aria-label="Which club?" data-testid="submit-club" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue placeholder="Choose a club" /></SelectTrigger>
+                <SelectTrigger id="submit-club" aria-label={ENTITY_ROLES[form.submitter_role].label} data-testid="submit-club" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue placeholder={ENTITY_ROLES[form.submitter_role].placeholder} /></SelectTrigger>
                 <SelectContent>
-                  {clubs.length === 0 && <div className="p-3 text-sm text-neutral-500">No active clubs yet — ask an admin to create one.</div>}
-                  {clubs.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {entities[form.submitter_role].length === 0 && <div className="p-3 text-sm text-neutral-500">{ENTITY_ROLES[form.submitter_role].empty}</div>}
+                  {entities[form.submitter_role].map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

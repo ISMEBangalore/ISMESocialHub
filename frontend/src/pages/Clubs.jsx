@@ -9,20 +9,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
-import { Plus, Edit2, Trash2, Users, Instagram, Linkedin, Twitter, Youtube, Facebook, Mail, User } from "lucide-react";
+import { Plus, Edit2, Trash2, Users, CalendarDays, Flag, Instagram, Linkedin, Twitter, Youtube, Facebook, Mail, User } from "lucide-react";
 
-function ClubForm({ initial, onSave, onClose }) {
+const TYPE_COPY = {
+  club: {
+    noun: "club", Icon: Users, badgeClass: "bg-sky-300",
+    heading: "Every ISME club, in one place", badgeLabel: "Club directory",
+    adminHint: "Add, edit or deactivate clubs.", memberHint: "Explore who's who on campus.",
+    emptyTitle: "No clubs yet", emptySubtitle: "Ask an admin to add the first one.",
+  },
+  event: {
+    noun: "event", Icon: CalendarDays, badgeClass: "bg-amber-300",
+    heading: "Every ISME event, in one place", badgeLabel: "Event directory",
+    adminHint: "Add, edit or deactivate events.", memberHint: "See what's happening on campus.",
+    emptyTitle: "No events yet", emptySubtitle: "Ask an admin to add the first one.",
+  },
+  house: {
+    noun: "house", Icon: Flag, badgeClass: "bg-lime-300",
+    heading: "Every ISME house, in one place", badgeLabel: "House directory",
+    adminHint: "Add, edit or deactivate houses.", memberHint: "See the campus house system.",
+    emptyTitle: "No houses yet", emptySubtitle: "Ask an admin to add the first one.",
+  },
+};
+
+function ClubForm({ type, initial, onSave, onClose }) {
+  const copy = TYPE_COPY[type];
   const [f, setF] = useState(initial || {
     name: "", description: "", logo_url: "", lead_name: "", lead_email: "",
     instagram: "", linkedin: "", twitter: "", youtube: "", facebook: "",
-    brand_color: "#3B82F6", status: "active",
+    brand_color: "#3B82F6", status: "active", type,
   });
   const set = (k) => (v) => setF((x) => ({ ...x, [k]: typeof v === "string" ? v : v.target?.value ?? v }));
   const save = async () => {
     try {
-      const payload = { ...f, lead_email: f.lead_email || null };
+      const payload = { ...f, type, lead_email: f.lead_email || null };
       await onSave(payload);
-      toast.success(initial ? "Club updated" : "Club created");
+      toast.success(initial ? `${copy.noun[0].toUpperCase()}${copy.noun.slice(1)} updated` : `${copy.noun[0].toUpperCase()}${copy.noun.slice(1)} created`);
       onClose();
     } catch (err) { toast.error(formatApiError(err)); }
   };
@@ -30,47 +52,47 @@ function ClubForm({ initial, onSave, onClose }) {
     <div className="space-y-4">
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="club-name" className="text-xs font-bold uppercase tracking-widest">Club name</Label>
-          <Input id="club-name" data-testid="club-name" value={f.name} onChange={set("name")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor={`${type}-name`} className="text-xs font-bold uppercase tracking-widest">{copy.noun[0].toUpperCase()}{copy.noun.slice(1)} name</Label>
+          <Input id={`${type}-name`} data-testid={`${type}-name`} value={f.name} onChange={set("name")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
         <div>
-          <Label htmlFor="club-color-text" className="text-xs font-bold uppercase tracking-widest">Brand color</Label>
+          <Label htmlFor={`${type}-color-text`} className="text-xs font-bold uppercase tracking-widest">Brand color</Label>
           <div className="flex gap-2 items-center mt-1">
-            <Input id="club-color" aria-label="Brand color picker" data-testid="club-color" type="color" value={f.brand_color} onChange={set("brand_color")} className="border-2 border-black rounded-lg h-11 w-16 p-1" />
-            <Input id="club-color-text" value={f.brand_color} onChange={set("brand_color")} className="border-2 border-black rounded-lg h-11 flex-1 font-mono" />
+            <Input id={`${type}-color`} aria-label="Brand color picker" data-testid={`${type}-color`} type="color" value={f.brand_color} onChange={set("brand_color")} className="border-2 border-black rounded-lg h-11 w-16 p-1" />
+            <Input id={`${type}-color-text`} value={f.brand_color} onChange={set("brand_color")} className="border-2 border-black rounded-lg h-11 flex-1 font-mono" />
           </div>
         </div>
       </div>
       <div>
-        <Label htmlFor="club-desc" className="text-xs font-bold uppercase tracking-widest">Description</Label>
-        <Textarea id="club-desc" data-testid="club-desc" rows={3} value={f.description} onChange={set("description")} className="border-2 border-black rounded-lg mt-1" />
+        <Label htmlFor={`${type}-desc`} className="text-xs font-bold uppercase tracking-widest">Description</Label>
+        <Textarea id={`${type}-desc`} data-testid={`${type}-desc`} rows={3} value={f.description} onChange={set("description")} className="border-2 border-black rounded-lg mt-1" />
       </div>
       <div>
-        <Label htmlFor="club-logo" className="text-xs font-bold uppercase tracking-widest">Logo URL</Label>
-        <Input id="club-logo" data-testid="club-logo" value={f.logo_url} onChange={set("logo_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
+        <Label htmlFor={`${type}-logo`} className="text-xs font-bold uppercase tracking-widest">Logo URL</Label>
+        <Input id={`${type}-logo`} data-testid={`${type}-logo`} value={f.logo_url} onChange={set("logo_url")} className="border-2 border-black rounded-lg h-11 mt-1" />
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="club-lead-name" className="text-xs font-bold uppercase tracking-widest">Lead name</Label>
-          <Input id="club-lead-name" data-testid="club-lead-name" value={f.lead_name} onChange={set("lead_name")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor={`${type}-lead-name`} className="text-xs font-bold uppercase tracking-widest">Lead name</Label>
+          <Input id={`${type}-lead-name`} data-testid={`${type}-lead-name`} value={f.lead_name} onChange={set("lead_name")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
         <div>
-          <Label htmlFor="club-lead-email" className="text-xs font-bold uppercase tracking-widest">Lead email</Label>
-          <Input id="club-lead-email" data-testid="club-lead-email" type="email" value={f.lead_email} onChange={set("lead_email")} className="border-2 border-black rounded-lg h-11 mt-1" />
+          <Label htmlFor={`${type}-lead-email`} className="text-xs font-bold uppercase tracking-widest">Lead email</Label>
+          <Input id={`${type}-lead-email`} data-testid={`${type}-lead-email`} type="email" value={f.lead_email} onChange={set("lead_email")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         {[["instagram","Instagram"],["linkedin","LinkedIn"],["twitter","Twitter/X"],["youtube","YouTube"],["facebook","Facebook"]].map(([k, l]) => (
           <div key={k}>
-            <Label htmlFor={`club-${k}`} className="text-xs font-bold uppercase tracking-widest">{l} handle</Label>
-            <Input id={`club-${k}`} data-testid={`club-${k}`} value={f[k]} onChange={set(k)} className="border-2 border-black rounded-lg h-11 mt-1" placeholder={`@${k}`} />
+            <Label htmlFor={`${type}-${k}`} className="text-xs font-bold uppercase tracking-widest">{l} handle</Label>
+            <Input id={`${type}-${k}`} data-testid={`${type}-${k}`} value={f[k]} onChange={set(k)} className="border-2 border-black rounded-lg h-11 mt-1" placeholder={`@${k}`} />
           </div>
         ))}
       </div>
       <div>
-        <Label htmlFor="club-status" className="text-xs font-bold uppercase tracking-widest">Status</Label>
+        <Label htmlFor={`${type}-status`} className="text-xs font-bold uppercase tracking-widest">Status</Label>
         <Select value={f.status} onValueChange={set("status")}>
-          <SelectTrigger id="club-status" aria-label="Status" data-testid="club-status" className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
+          <SelectTrigger id={`${type}-status`} aria-label="Status" data-testid={`${type}-status`} className="border-2 border-black rounded-lg h-11 mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
@@ -78,8 +100,8 @@ function ClubForm({ initial, onSave, onClose }) {
         </Select>
       </div>
       <div className="flex justify-end gap-2 pt-2">
-        <Button variant="outline" onClick={onClose} data-testid="club-cancel" className="border-2 border-black rounded-full font-bold">Cancel</Button>
-        <Button onClick={save} data-testid="club-save" className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-black rounded-full font-bold">Save</Button>
+        <Button variant="outline" onClick={onClose} data-testid={`${type}-cancel`} className="border-2 border-black rounded-full font-bold">Cancel</Button>
+        <Button onClick={save} data-testid={`${type}-save`} className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-black rounded-full font-bold">Save</Button>
       </div>
     </div>
   );
@@ -89,21 +111,22 @@ const socialIcons = {
   instagram: Instagram, linkedin: Linkedin, twitter: Twitter, youtube: Youtube, facebook: Facebook,
 };
 
-export default function Clubs() {
+export default function Clubs({ type = "club" }) {
+  const copy = TYPE_COPY[type];
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [clubs, setClubs] = useState([]);
+  const [items, setItems] = useState([]);
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  const load = () => api.get("/clubs").then((r) => setClubs(r.data)).catch((err) => toast.error(formatApiError(err)));
-  useEffect(() => { load(); }, []);
+  const load = () => api.get("/clubs", { params: { type } }).then((r) => setItems(r.data)).catch((err) => toast.error(formatApiError(err)));
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [type]);
 
-  const create = async (payload) => { const r = await api.post("/clubs", payload); setClubs((c) => [...c, r.data].sort((a,b) => a.name.localeCompare(b.name))); };
-  const update = async (id, payload) => { const r = await api.put(`/clubs/${id}`, payload); setClubs((c) => c.map((x) => x.id === id ? r.data : x)); };
+  const create = async (payload) => { const r = await api.post("/clubs", payload); setItems((c) => [...c, r.data].sort((a,b) => a.name.localeCompare(b.name))); };
+  const update = async (id, payload) => { const r = await api.put(`/clubs/${id}`, payload); setItems((c) => c.map((x) => x.id === id ? r.data : x)); };
   const remove = async (id) => {
-    if (!window.confirm("Delete this club? (Use Inactive to hide it instead.)")) return;
-    try { await api.delete(`/clubs/${id}`); setClubs((c) => c.filter((x) => x.id !== id)); toast.success("Club deleted"); }
+    if (!window.confirm(`Delete this ${copy.noun}? (Use Inactive to hide it instead.)`)) return;
+    try { await api.delete(`/clubs/${id}`); setItems((c) => c.filter((x) => x.id !== id)); toast.success(`${copy.noun[0].toUpperCase()}${copy.noun.slice(1)} deleted`); }
     catch (err) { toast.error(formatApiError(err)); }
   };
 
@@ -111,37 +134,37 @@ export default function Clubs() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-black rounded-full bg-sky-300 text-xs font-black uppercase tracking-widest mb-2">
-            <Users className="w-3.5 h-3.5" strokeWidth={3} /> Club directory
+          <div className={`inline-flex items-center gap-2 px-3 py-1 border-2 border-black rounded-full ${copy.badgeClass} text-xs font-black uppercase tracking-widest mb-2`}>
+            <copy.Icon className="w-3.5 h-3.5" strokeWidth={3} /> {copy.badgeLabel}
           </div>
-          <h1 className="font-display text-4xl font-black">Every ISME club, in one place</h1>
-          <p className="text-neutral-600 mt-1">{isAdmin ? "Add, edit or deactivate clubs." : "Explore who's who on campus."}</p>
+          <h1 className="font-display text-4xl font-black">{copy.heading}</h1>
+          <p className="text-neutral-600 mt-1">{isAdmin ? copy.adminHint : copy.memberHint}</p>
         </div>
         {isAdmin && (
           <Dialog open={openNew} onOpenChange={setOpenNew}>
             <DialogTrigger asChild>
-              <Button data-testid="clubs-new" className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-2 border-black rounded-full brutal-shadow-hover font-bold">
-                <Plus className="w-4 h-4 mr-1" /> New club
+              <Button data-testid={`${type}s-new`} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-2 border-black rounded-full brutal-shadow-hover font-bold">
+                <Plus className="w-4 h-4 mr-1" /> New {copy.noun}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl border-2 border-black">
-              <DialogHeader><DialogTitle className="font-display text-2xl">Add a club</DialogTitle></DialogHeader>
-              <ClubForm onSave={create} onClose={() => setOpenNew(false)} />
+              <DialogHeader><DialogTitle className="font-display text-2xl">Add {["a","e","i","o","u"].includes(copy.noun[0]) ? "an" : "a"} {copy.noun}</DialogTitle></DialogHeader>
+              <ClubForm type={type} onSave={create} onClose={() => setOpenNew(false)} />
             </DialogContent>
           </Dialog>
         )}
       </div>
 
-      {clubs.length === 0 && (
+      {items.length === 0 && (
         <div className="border-2 border-dashed border-black rounded-2xl p-10 text-center bg-white">
-          <div className="font-display text-3xl font-black">No clubs yet</div>
-          <p className="text-neutral-500 mt-1">Ask an admin to add the first one.</p>
+          <div className="font-display text-3xl font-black">{copy.emptyTitle}</div>
+          <p className="text-neutral-500 mt-1">{copy.emptySubtitle}</p>
         </div>
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {clubs.map((c) => (
-          <div key={c.id} data-testid={`club-card-${c.id}`} className="border-2 border-black rounded-2xl bg-white overflow-hidden brutal-shadow-hover">
+        {items.map((c) => (
+          <div key={c.id} data-testid={`${type}-card-${c.id}`} className="border-2 border-black rounded-2xl bg-white overflow-hidden brutal-shadow-hover">
             <div className="h-3" style={{ background: c.brand_color }} />
             <div className="p-5">
               <div className="flex items-start justify-between gap-2">
@@ -159,8 +182,8 @@ export default function Clubs() {
                 </div>
                 {isAdmin && (
                   <div className="flex gap-1">
-                    <button data-testid={`club-edit-${c.id}`} onClick={() => setEditing(c)} className="w-8 h-8 border-2 border-black rounded-md bg-yellow-300 grid place-items-center hover:brutal-shadow"><Edit2 className="w-4 h-4" /></button>
-                    <button data-testid={`club-delete-${c.id}`} onClick={() => remove(c.id)} className="w-8 h-8 border-2 border-black rounded-md bg-rose-400 text-white grid place-items-center hover:brutal-shadow"><Trash2 className="w-4 h-4" /></button>
+                    <button aria-label={`Edit ${c.name}`} data-testid={`${type}-edit-${c.id}`} onClick={() => setEditing(c)} className="w-8 h-8 border-2 border-black rounded-md bg-yellow-300 grid place-items-center hover:brutal-shadow"><Edit2 className="w-4 h-4" /></button>
+                    <button aria-label={`Delete ${c.name}`} data-testid={`${type}-delete-${c.id}`} onClick={() => remove(c.id)} className="w-8 h-8 border-2 border-black rounded-md bg-rose-400 text-white grid place-items-center hover:brutal-shadow"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 )}
               </div>
@@ -176,7 +199,7 @@ export default function Clubs() {
                   if (!c[k]) return null;
                   const Icon = socialIcons[k];
                   return (
-                    <span key={k} data-testid={`club-social-${c.id}-${k}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border-2 border-black bg-neutral-100 text-xs font-bold">
+                    <span key={k} data-testid={`${type}-social-${c.id}-${k}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border-2 border-black bg-neutral-100 text-xs font-bold">
                       <Icon className="w-3.5 h-3.5" strokeWidth={2.5} /> {c[k]}
                     </span>
                   );
@@ -189,8 +212,8 @@ export default function Clubs() {
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
         <DialogContent className="max-w-2xl border-2 border-black">
-          <DialogHeader><DialogTitle className="font-display text-2xl">Edit club</DialogTitle></DialogHeader>
-          {editing && <ClubForm initial={editing} onSave={(p) => update(editing.id, p)} onClose={() => setEditing(null)} />}
+          <DialogHeader><DialogTitle className="font-display text-2xl">Edit {copy.noun}</DialogTitle></DialogHeader>
+          {editing && <ClubForm type={type} initial={editing} onSave={(p) => update(editing.id, p)} onClose={() => setEditing(null)} />}
         </DialogContent>
       </Dialog>
     </div>
