@@ -36,9 +36,7 @@ export default function Header() {
     <header className="sticky top-0 z-30 bg-white border-b-2 border-black">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         <Link to="/" data-testid="brand-logo" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-lg border-2 border-black bg-blue-500 grid place-items-center brutal-shadow group-hover:translate-x-[-1px] group-hover:translate-y-[-1px] transition-transform">
-            <span className="font-display font-black text-white text-lg">i</span>
-          </div>
+          <img src="/isme-mark.png" alt="ISME" className="w-9 h-9 object-contain group-hover:translate-x-[-1px] group-hover:translate-y-[-1px] transition-transform" />
           <div>
             <div className="font-display font-black text-lg leading-none">ISME</div>
             <div className="text-[10px] font-bold tracking-widest text-neutral-500 leading-none">SOCIAL HUB</div>
