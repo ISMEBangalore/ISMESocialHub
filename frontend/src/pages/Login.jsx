@@ -35,7 +35,7 @@ export default function Login() {
         aria-hidden="true"
         className="fixed inset-0 z-0 flex items-center justify-center px-8 pointer-events-none opacity-[0.18]"
       >
-        <img src="/isme-logo.png" alt="" className="w-full max-w-3xl object-contain" />
+        <img src="/isme-logo.png" alt="" className="w-full max-w-7xl object-contain" />
       </div>
       <div className="relative border-2 border-black rounded-2xl bg-white p-8 brutal-shadow-lg">
         <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-black rounded-full bg-blue-300 text-xs font-black uppercase tracking-widest mb-4">
