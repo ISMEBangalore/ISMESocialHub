@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import StatusBadge from "@/components/StatusBadge";
+import { isAdminRole } from "@/lib/roles";
 import { Plus, Edit2, Trash2, Users, CalendarDays, Flag, Instagram, Linkedin, Twitter, Youtube, Facebook, Mail, User } from "lucide-react";
 
 const TYPE_COPY = {
@@ -129,7 +130,7 @@ const socialIcons = {
 export default function Clubs({ type = "club" }) {
   const copy = TYPE_COPY[type];
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const [items, setItems] = useState([]);
   const [openNew, setOpenNew] = useState(false);
   const [editing, setEditing] = useState(null);

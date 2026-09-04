@@ -13,13 +13,14 @@ import ReviewQueue from "@/pages/ReviewQueue";
 import Feed from "@/pages/Feed";
 import Clubs from "@/pages/Clubs";
 import CalendarPage from "@/pages/CalendarPage";
+import { isAdminRole } from "@/lib/roles";
 import "@/App.css";
 
 function HomeRoute() {
   const { user, ready } = useAuth();
   if (!ready) return <div className="p-10 text-center text-neutral-500">Loading…</div>;
   if (user && user !== false) {
-    return <Navigate to={user.role === "admin" ? "/dashboard" : "/feed"} replace />;
+    return <Navigate to={isAdminRole(user.role) ? "/dashboard" : "/feed"} replace />;
   }
   return <Landing />;
 }

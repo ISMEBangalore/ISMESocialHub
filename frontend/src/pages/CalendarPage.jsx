@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { isAdminRole } from "@/lib/roles";
 import { Plus, Edit2, Trash2, CalendarClock } from "lucide-react";
 
 const AUDIENCE_COLORS = {
@@ -66,7 +67,7 @@ function EntryForm({ initial, onSave, onClose }) {
 
 export default function CalendarPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const [items, setItems] = useState([]);
   const [audienceFilter, setAudienceFilter] = useState("ALL_FILTER");
   const [openNew, setOpenNew] = useState(false);

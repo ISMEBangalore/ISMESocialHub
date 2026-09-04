@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatApiError } from "@/lib/api";
+import { isAdminRole } from "@/lib/roles";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 
@@ -20,7 +21,7 @@ export default function Register() {
     try {
       const u = await register(form.email, form.password, form.name);
       toast.success(`Account ready, ${u.name}!`);
-      nav(u.role === "admin" ? "/dashboard" : "/feed");
+      nav(isAdminRole(u.role) ? "/dashboard" : "/feed");
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {

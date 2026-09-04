@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import StatusBadge, { PlatformPill, PLATFORM_COLORS } from "@/components/StatusBadge";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { isAdminRole } from "@/lib/roles";
 import { Plus, Edit2, Trash2, CalendarDays, List, ExternalLink, Heart, MessageCircle, Share2 } from "lucide-react";
 import { format, parseISO, isSameDay } from "date-fns";
 
@@ -174,7 +175,7 @@ function CalendarView({ posts, clubs }) {
 
 export default function Feed() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const [params, setParams] = useSearchParams();
   const [posts, setPosts] = useState([]);
   const [clubs, setClubs] = useState([]);

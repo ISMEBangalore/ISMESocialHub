@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LayoutDashboard, Inbox, CalendarDays, Calendar, CalendarClock, Users, Flag, LogOut, Send, Menu, X, User2, Search } from "lucide-react";
 import { useState } from "react";
+import { isAdminRole, roleLabel } from "@/lib/roles";
 
 const memberLinks = [
   { to: "/feed", label: "Feed", icon: CalendarDays, testId: "nav-feed" },
@@ -29,7 +30,7 @@ export default function Header() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const isAdmin = user && user.role === "admin";
+  const isAdmin = user && isAdminRole(user.role);
   const links = isAdmin ? adminLinks : memberLinks;
 
   const doLogout = () => { logout(); navigate("/"); };
@@ -88,7 +89,7 @@ export default function Header() {
                 <DropdownMenuLabel className="font-bold">
                   <div className="text-sm">{user.name}</div>
                   <div className="text-xs text-neutral-500 font-normal">{user.email}</div>
-                  <div className="text-[10px] uppercase tracking-widest mt-1 text-blue-600">{user.role}</div>
+                  <div className="text-[10px] uppercase tracking-widest mt-1 text-blue-600">{roleLabel(user.role)}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/my-submissions")} data-testid="menu-my-submissions">

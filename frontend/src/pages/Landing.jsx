@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Sparkles, Send, Calendar, Users, LogIn, ArrowRight, Search } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { isAdminRole } from "@/lib/roles";
 
 const HERO_IMG = "https://images.unsplash.com/photo-1549057446-9f5c6ac91a04?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA4Mzl8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwbGlmZSUyMGFjdGl2ZXxlbnwwfHx8fDE3ODY4MjE2MDd8MA&ixlib=rb-4.1.0&q=85";
 
@@ -39,7 +40,7 @@ export default function Landing() {
                 </Button>
               </Link>
             ) : (
-              <Link to={user.role === "admin" ? "/dashboard" : "/feed"} data-testid="hero-continue-btn">
+              <Link to={isAdminRole(user.role) ? "/dashboard" : "/feed"} data-testid="hero-continue-btn">
                 <Button size="lg" variant="outline" className="border-2 border-black rounded-full font-bold text-base">
                   Continue to app <ArrowRight className="w-5 h-5 ml-2" strokeWidth={2.5} />
                 </Button>

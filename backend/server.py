@@ -35,6 +35,8 @@ JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 SEED_ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get("SEED_ADMIN_EMAILS", "").split(",") if e.strip()]
+SEED_COADMIN_EMAILS = [e.strip().lower() for e in os.environ.get("SEED_COADMIN_EMAILS", "").split(",") if e.strip()]
+ADMIN_ROLES = ("admin", "co_admin")
 
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
@@ -100,7 +102,7 @@ async def get_current_user(request: Request) -> dict:
     return user
 
 async def require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") != "admin":
+    if user.get("role") not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
@@ -228,19 +230,19 @@ async def startup():
     await db.submissions.create_index("submitter_email")
     await db.password_reset_tokens.create_index("token", unique=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
-    # Seed admin accounts (unclaimed - no password_hash)
-    for email in SEED_ADMIN_EMAILS:
+    # Seed admin / co-admin accounts (unclaimed - no password_hash)
+    for email, role in [(e, "admin") for e in SEED_ADMIN_EMAILS] + [(e, "co_admin") for e in SEED_COADMIN_EMAILS]:
         existing = await db.users.find_one({"email": email})
         if not existing:
             await db.users.insert_one({
                 "id": str(uuid.uuid4()),
                 "email": email,
                 "name": email.split("@")[0],
-                "role": "admin",
+                "role": role,
                 "password_hash": None,  # unclaimed
                 "created_at": now_iso(),
             })
-            logger.info(f"Seeded admin (unclaimed): {email}")
+            logger.info(f"Seeded {role} (unclaimed): {email}")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -454,7 +456,7 @@ async def create_submission(payload: SubmissionIn):
     doc.pop("_id", None)
 
     # Email notifications (fire and forget)
-    admins = await db.users.find({"role": "admin"}, {"_id": 0, "email": 1}).to_list(50)
+    admins = await db.users.find({"role": {"$in": list(ADMIN_ROLES)}}, {"_id": 0, "email": 1}).to_list(50)
     admin_emails = [a["email"] for a in admins if a.get("email")]
     body_admin = f"<p>New submission: <b>{doc['title']}</b></p><p>From: {doc['submitter_name']} ({doc['submitter_email']}) — {doc['submitter_role']}</p><p>Platform: {doc['suggested_platform']} · {doc['post_type']} · Priority: {doc['priority']}</p><p><a href='{FRONTEND_URL}/review'>Review in dashboard</a></p>"
     for ae in admin_emails:

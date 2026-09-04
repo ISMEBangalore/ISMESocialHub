@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatApiError } from "@/lib/api";
+import { isAdminRole } from "@/lib/roles";
 import { toast } from "sonner";
 import { LogIn } from "lucide-react";
 
@@ -21,7 +22,7 @@ export default function Login() {
     try {
       const u = await login(email, password);
       toast.success(`Welcome, ${u.name || u.email}!`);
-      nav(u.role === "admin" ? "/dashboard" : "/feed");
+      nav(isAdminRole(u.role) ? "/dashboard" : "/feed");
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
