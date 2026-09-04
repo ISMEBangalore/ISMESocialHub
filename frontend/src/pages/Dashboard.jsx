@@ -2,10 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Inbox, CheckCircle2, XCircle, CalendarDays, Send, TrendingUp } from "lucide-react";
+import { Inbox, CheckCircle2, XCircle, CalendarDays, Send, TrendingUp, Flag, Users, CalendarClock, Megaphone } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { PLATFORM_COLORS } from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
+
+const overview = [
+  { key: "houses_count", label: "Houses", icon: Flag, color: "bg-lime-300", to: "/houses" },
+  { key: "clubs_count", label: "Clubs", icon: Users, color: "bg-sky-300", to: "/clubs" },
+  { key: "sdc_events_count", label: "SDC Events", icon: CalendarClock, color: "bg-amber-300", to: "/calendar" },
+  { key: "posts_published_total", label: "Posts Published", icon: Megaphone, color: "bg-fuchsia-300", to: "/feed?status=published" },
+];
 
 const stats = [
   { key: "pending_submissions", label: "Pending", icon: Inbox, color: "bg-yellow-300", to: "/review?status=pending" },
@@ -35,6 +42,20 @@ export default function Dashboard() {
           <h1 className="font-display text-4xl sm:text-5xl font-black tracking-tight">The pulse of ISME social</h1>
           <p className="text-neutral-600 mt-1">Numbers refresh every time you open this page.</p>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {overview.map((s, i) => (
+          <motion.div key={s.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <Link to={s.to} data-testid={`overview-${s.key}`}>
+              <Card className={`p-4 border-2 border-black rounded-xl ${s.color} brutal-shadow-hover cursor-pointer`}>
+                <s.icon className="w-5 h-5" strokeWidth={2.5} />
+                <div className="mt-4 font-display font-black text-3xl leading-none">{data?.[s.key] ?? "—"}</div>
+                <div className="text-[11px] font-bold uppercase tracking-widest mt-1">{s.label}</div>
+              </Card>
+            </Link>
+          </motion.div>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

@@ -627,6 +627,10 @@ async def dashboard_stats(admin: dict = Depends(require_admin)):
         "published_date": {"$gte": start_of_month.isoformat()},
     })
     scheduled = await db.posts.count_documents({"status": "scheduled"})
+    posts_published_total = await db.posts.count_documents({"status": "published"})
+    houses_count = await db.clubs.count_documents({"type": "house"})
+    clubs_count = await db.clubs.count_documents({"type": "club"})
+    sdc_events_count = await db.calendar_events.count_documents({})
 
     # breakdown by platform
     platform_pipeline = [
@@ -660,6 +664,10 @@ async def dashboard_stats(admin: dict = Depends(require_admin)):
         "total_posts": total_posts,
         "published_this_month": published_this_month,
         "scheduled": scheduled,
+        "posts_published_total": posts_published_total,
+        "houses_count": houses_count,
+        "clubs_count": clubs_count,
+        "sdc_events_count": sdc_events_count,
         "by_platform": by_platform,
         "by_club": by_club,
     }
