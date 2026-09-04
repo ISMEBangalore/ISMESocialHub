@@ -45,7 +45,7 @@ function App() {
               <ProtectedRoute><Feed /></ProtectedRoute>
             } />
             <Route path="/dashboard" element={
-              <ProtectedRoute adminOnly><Dashboard /></ProtectedRoute>
+              <ProtectedRoute><Dashboard /></ProtectedRoute>
             } />
             <Route path="/review" element={
               <ProtectedRoute adminOnly><ReviewQueue /></ProtectedRoute>

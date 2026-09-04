@@ -10,6 +10,7 @@ import { useState } from "react";
 import { isAdminRole, roleLabel } from "@/lib/roles";
 
 const memberLinks = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, testId: "nav-dashboard" },
   { to: "/feed", label: "Feed", icon: CalendarDays, testId: "nav-feed" },
   { to: "/clubs", label: "Clubs", icon: Users, testId: "nav-clubs" },
   { to: "/events", label: "Events", icon: Calendar, testId: "nav-events" },

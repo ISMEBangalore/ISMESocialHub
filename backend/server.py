@@ -615,7 +615,7 @@ async def delete_post(post_id: str, admin: dict = Depends(require_admin)):
 # Dashboard
 # -----------------------
 @api.get("/admin/dashboard")
-async def dashboard_stats(admin: dict = Depends(require_admin)):
+async def dashboard_stats(user: dict = Depends(get_current_user)):
     pending = await db.submissions.count_documents({"status": {"$in": ["pending", "in_review"]}})
     approved = await db.submissions.count_documents({"status": "approved"})
     rejected = await db.submissions.count_documents({"status": "rejected"})

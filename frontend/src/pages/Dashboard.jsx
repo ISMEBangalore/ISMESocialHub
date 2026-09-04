@@ -6,6 +6,8 @@ import { Inbox, CheckCircle2, XCircle, CalendarDays, Send, TrendingUp, Flag, Use
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
 import { PLATFORM_COLORS } from "@/components/StatusBadge";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { isAdminRole } from "@/lib/roles";
 
 const overview = [
   { key: "houses_count", label: "Houses", icon: Flag, color: "bg-lime-300", to: "/houses" },
@@ -24,6 +26,8 @@ const stats = [
 ];
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isAdmin = isAdminRole(user?.role);
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -37,10 +41,10 @@ export default function Dashboard() {
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-black rounded-full bg-blue-300 text-xs font-black uppercase tracking-widest mb-2">
-            Admin dashboard
+            {isAdmin ? "Admin dashboard" : "Progress dashboard"}
           </div>
           <h1 className="font-display text-4xl sm:text-5xl font-black tracking-tight">The pulse of ISME social</h1>
-          <p className="text-neutral-600 mt-1">Numbers refresh every time you open this page.</p>
+          <p className="text-neutral-600 mt-1">{isAdmin ? "Numbers refresh every time you open this page." : "A read-only view of where every push stands — yours and everyone else's."}</p>
         </div>
       </div>
 
