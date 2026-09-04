@@ -157,6 +157,9 @@ class ClubIn(BaseModel):
     logo_url: str = ""
     lead_name: str = ""
     lead_email: Optional[EmailStr] = None
+    faculty_incharge: str = ""
+    student_coordinator: str = ""
+    social_media_coordinator: str = ""
     instagram: str = ""
     linkedin: str = ""
     twitter: str = ""

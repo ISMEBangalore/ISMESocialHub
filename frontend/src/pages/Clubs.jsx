@@ -36,6 +36,7 @@ function ClubForm({ type, initial, onSave, onClose }) {
   const copy = TYPE_COPY[type];
   const [f, setF] = useState(initial || {
     name: "", description: "", logo_url: "", lead_name: "", lead_email: "",
+    faculty_incharge: "", student_coordinator: "", social_media_coordinator: "",
     instagram: "", linkedin: "", twitter: "", youtube: "", facebook: "",
     brand_color: "#3B82F6", status: "active", type,
   });
@@ -79,6 +80,20 @@ function ClubForm({ type, initial, onSave, onClose }) {
         <div>
           <Label htmlFor={`${type}-lead-email`} className="text-xs font-bold uppercase tracking-widest">Lead email</Label>
           <Input id={`${type}-lead-email`} data-testid={`${type}-lead-email`} type="email" value={f.lead_email} onChange={set("lead_email")} className="border-2 border-black rounded-lg h-11 mt-1" />
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div>
+          <Label htmlFor={`${type}-faculty-incharge`} className="text-xs font-bold uppercase tracking-widest">Faculty incharge</Label>
+          <Input id={`${type}-faculty-incharge`} data-testid={`${type}-faculty-incharge`} value={f.faculty_incharge} onChange={set("faculty_incharge")} className="border-2 border-black rounded-lg h-11 mt-1" />
+        </div>
+        <div>
+          <Label htmlFor={`${type}-student-coordinator`} className="text-xs font-bold uppercase tracking-widest">Student coordinator</Label>
+          <Input id={`${type}-student-coordinator`} data-testid={`${type}-student-coordinator`} value={f.student_coordinator} onChange={set("student_coordinator")} className="border-2 border-black rounded-lg h-11 mt-1" />
+        </div>
+        <div>
+          <Label htmlFor={`${type}-social-media-coordinator`} className="text-xs font-bold uppercase tracking-widest">Social media coordinator</Label>
+          <Input id={`${type}-social-media-coordinator`} data-testid={`${type}-social-media-coordinator`} value={f.social_media_coordinator} onChange={set("social_media_coordinator")} className="border-2 border-black rounded-lg h-11 mt-1" />
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
@@ -192,6 +207,13 @@ export default function Clubs({ type = "club" }) {
                 <div className="mt-3 text-xs text-neutral-500 space-y-1">
                   {c.lead_name && <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {c.lead_name}</div>}
                   {c.lead_email && <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {c.lead_email}</div>}
+                </div>
+              )}
+              {(c.faculty_incharge || c.student_coordinator || c.social_media_coordinator) && (
+                <div className="mt-3 text-xs text-neutral-600 space-y-1 border-t-2 border-dashed border-neutral-200 pt-2">
+                  {c.faculty_incharge && <div><span className="font-bold uppercase tracking-widest text-[10px] text-neutral-400">Faculty:</span> {c.faculty_incharge}</div>}
+                  {c.student_coordinator && <div><span className="font-bold uppercase tracking-widest text-[10px] text-neutral-400">Student coord:</span> {c.student_coordinator}</div>}
+                  {c.social_media_coordinator && <div><span className="font-bold uppercase tracking-widest text-[10px] text-neutral-400">Social media coord:</span> {c.social_media_coordinator}</div>}
                 </div>
               )}
               <div className="mt-3 flex flex-wrap gap-1.5">
