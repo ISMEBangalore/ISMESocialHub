@@ -169,6 +169,13 @@ class ClubIn(BaseModel):
     status: Literal["active", "inactive"] = "active"
     type: Literal["club", "event", "house"] = "club"
 
+class CalendarEventIn(BaseModel):
+    date: str  # ISO date string, "YYYY-MM-DD"
+    activity: str
+    audience: List[str] = Field(default_factory=list)
+    academic_year: str = ""
+    source: str = "SDC"
+
 class SubmissionIn(BaseModel):
     submitter_name: str
     submitter_email: EmailStr
@@ -380,6 +387,50 @@ async def delete_club(club_id: str, admin: dict = Depends(require_admin)):
     result = await db.clubs.delete_one({"id": club_id})
     if result.deleted_count == 0:
         raise HTTPException(404, "Club not found")
+    return {"deleted": True}
+
+# -----------------------
+# Calendar
+# -----------------------
+@api.get("/calendar")
+async def list_calendar(from_date: Optional[str] = None, to_date: Optional[str] = None, audience: Optional[str] = None):
+    q = {}
+    if from_date or to_date:
+        q["date"] = {}
+        if from_date:
+            q["date"]["$gte"] = from_date
+        if to_date:
+            q["date"]["$lte"] = to_date
+    if audience:
+        q["audience"] = audience
+    docs = await db.calendar_events.find(q, {"_id": 0}).sort("date", 1).to_list(1000)
+    return docs
+
+@api.post("/calendar")
+async def create_calendar_event(payload: CalendarEventIn, admin: dict = Depends(require_admin)):
+    doc = payload.model_dump()
+    doc["id"] = str(uuid.uuid4())
+    doc["created_at"] = now_iso()
+    doc["updated_at"] = now_iso()
+    await db.calendar_events.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@api.put("/calendar/{event_id}")
+async def update_calendar_event(event_id: str, payload: CalendarEventIn, admin: dict = Depends(require_admin)):
+    update = payload.model_dump()
+    update["updated_at"] = now_iso()
+    result = await db.calendar_events.update_one({"id": event_id}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Calendar event not found")
+    doc = await db.calendar_events.find_one({"id": event_id}, {"_id": 0})
+    return doc
+
+@api.delete("/calendar/{event_id}")
+async def delete_calendar_event(event_id: str, admin: dict = Depends(require_admin)):
+    result = await db.calendar_events.delete_one({"id": event_id})
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Calendar event not found")
     return {"deleted": True}
 
 # -----------------------

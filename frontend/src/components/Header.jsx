@@ -5,7 +5,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Inbox, CalendarDays, Calendar, Users, Flag, LogOut, Send, Menu, X, User2, Search } from "lucide-react";
+import { LayoutDashboard, Inbox, CalendarDays, Calendar, CalendarClock, Users, Flag, LogOut, Send, Menu, X, User2, Search } from "lucide-react";
 import { useState } from "react";
 
 const memberLinks = [
@@ -13,6 +13,7 @@ const memberLinks = [
   { to: "/clubs", label: "Clubs", icon: Users, testId: "nav-clubs" },
   { to: "/events", label: "Events", icon: Calendar, testId: "nav-events" },
   { to: "/houses", label: "Houses", icon: Flag, testId: "nav-houses" },
+  { to: "/calendar", label: "SDC Calendar", icon: CalendarClock, testId: "nav-calendar" },
 ];
 const adminLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, testId: "nav-dashboard" },
@@ -21,6 +22,7 @@ const adminLinks = [
   { to: "/clubs", label: "Clubs", icon: Users, testId: "nav-clubs" },
   { to: "/events", label: "Events", icon: Calendar, testId: "nav-events" },
   { to: "/houses", label: "Houses", icon: Flag, testId: "nav-houses" },
+  { to: "/calendar", label: "SDC Calendar", icon: CalendarClock, testId: "nav-calendar" },
 ];
 
 export default function Header() {

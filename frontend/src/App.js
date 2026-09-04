@@ -12,6 +12,7 @@ import Dashboard from "@/pages/Dashboard";
 import ReviewQueue from "@/pages/ReviewQueue";
 import Feed from "@/pages/Feed";
 import Clubs from "@/pages/Clubs";
+import CalendarPage from "@/pages/CalendarPage";
 import "@/App.css";
 
 function HomeRoute() {
@@ -38,6 +39,7 @@ function App() {
             <Route path="/clubs" element={<Clubs type="club" />} />
             <Route path="/events" element={<Clubs type="event" />} />
             <Route path="/houses" element={<Clubs type="house" />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/feed" element={
               <ProtectedRoute><Feed /></ProtectedRoute>
             } />
