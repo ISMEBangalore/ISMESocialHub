@@ -5,7 +5,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Inbox, CalendarDays, Calendar, CalendarClock, Users, Flag, LogOut, Send, Menu, X, User2, Search } from "lucide-react";
+import { LayoutDashboard, Inbox, CalendarDays, Calendar, CalendarClock, Users, Flag, LogOut, Send, Menu, X, User2, Search, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { isAdminRole, roleLabel } from "@/lib/roles";
 
@@ -20,6 +20,7 @@ const memberLinks = [
 const adminLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, testId: "nav-dashboard" },
   { to: "/review", label: "Review Queue", icon: Inbox, testId: "nav-review" },
+  { to: "/admin/newsletter", label: "AI Newsletter", icon: Sparkles, testId: "nav-newsletter" },
   { to: "/feed", label: "Feed & Calendar", icon: CalendarDays, testId: "nav-feed" },
   { to: "/clubs", label: "Clubs", icon: Users, testId: "nav-clubs" },
   { to: "/events", label: "Events", icon: Calendar, testId: "nav-events" },
