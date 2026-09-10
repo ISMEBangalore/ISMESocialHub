@@ -235,6 +235,7 @@ class NewsletterHighlightEdit(BaseModel):
 
 class NewsletterContentEdit(BaseModel):
     subject_line: str
+    analysis: str = ""
     intro: str
     items: List[NewsletterItemEdit]
     skill_takeaway: str = ""
@@ -704,7 +705,15 @@ def render_newsletter_body_html(content: dict, public_url: str) -> str:
     """Renders the structured content agent output into the branded HTML used for
     both the email body and the public newsletter page - one template, two uses,
     so the AI never hand-authors markup."""
-    parts = [f"<p style='font-size:16px;'>{html.escape(content.get('intro', ''))}</p>"]
+    parts = []
+    analysis = content.get("analysis", "")
+    if analysis:
+        parts.append(f"""
+<div style="margin-bottom:20px; padding:16px; background:#EFF6FF; border:2px solid #0A0A0A; border-radius:8px;">
+  <div style="font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#3B82F6; margin-bottom:6px;">ISME's Analysis</div>
+  <p style="margin:0;">{html.escape(analysis)}</p>
+</div>""")
+    parts.append(f"<p style='font-size:16px;'>{html.escape(content.get('intro', ''))}</p>")
     for item in content.get("items", []):
         parts.append(f"""
 <div style="margin:20px 0; padding-left:16px; border-left:3px solid #3B82F6;">

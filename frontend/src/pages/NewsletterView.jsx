@@ -38,6 +38,13 @@ export default function NewsletterView() {
         <p className="text-neutral-500 text-sm mt-2">{new Date(content.sent_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</p>
       )}
 
+      {content.analysis && (
+        <div className="mt-6 border-2 border-black rounded-xl p-4 bg-blue-50">
+          <div className="text-xs font-black uppercase tracking-widest text-blue-600 mb-1">ISME's Analysis</div>
+          <p className="text-neutral-800">{content.analysis}</p>
+        </div>
+      )}
+
       <p className="text-lg mt-6 text-neutral-800">{content.intro}</p>
 
       <div className="mt-8 space-y-6">
