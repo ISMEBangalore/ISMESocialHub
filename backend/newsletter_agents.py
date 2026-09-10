@@ -30,7 +30,12 @@ def get_client():
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise RuntimeError("ANTHROPIC_API_KEY is not configured.")
     if _client is None:
-        _client = anthropic.Anthropic()
+        # Org-level (not workspace-scoped) API keys require this header on every
+        # request. Workspace-scoped keys don't need it - ANTHROPIC_WORKSPACE_ID
+        # is optional and only relevant for the former.
+        workspace_id = os.environ.get("ANTHROPIC_WORKSPACE_ID", "")
+        default_headers = {"anthropic-workspace-id": workspace_id} if workspace_id else None
+        _client = anthropic.Anthropic(default_headers=default_headers)
     return _client
 
 
