@@ -4,7 +4,7 @@ import { Toaster } from "sonner";
 
 export default function Layout() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#FAFAFA] text-neutral-900">
+    <div className="min-h-screen overflow-x-clip bg-[#FAFAFA] text-neutral-900">
       <Header />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <Outlet />
