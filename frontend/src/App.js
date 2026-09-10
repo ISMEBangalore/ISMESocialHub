@@ -13,6 +13,7 @@ import ReviewQueue from "@/pages/ReviewQueue";
 import Feed from "@/pages/Feed";
 import Clubs from "@/pages/Clubs";
 import CalendarPage from "@/pages/CalendarPage";
+import NewsletterPipeline from "@/pages/NewsletterPipeline";
 import { isAdminRole } from "@/lib/roles";
 import "@/App.css";
 
@@ -49,6 +50,9 @@ function App() {
             } />
             <Route path="/review" element={
               <ProtectedRoute adminOnly><ReviewQueue /></ProtectedRoute>
+            } />
+            <Route path="/admin/newsletter" element={
+              <ProtectedRoute adminOnly><NewsletterPipeline /></ProtectedRoute>
             } />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

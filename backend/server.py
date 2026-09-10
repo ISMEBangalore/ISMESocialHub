@@ -5,6 +5,7 @@ load_dotenv(ROOT_DIR / ".env")
 
 import os
 import uuid
+import html
 import logging
 import asyncio
 import secrets
@@ -17,6 +18,8 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Respons
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
+
+import newsletter_agents as agents
 
 # Optional Resend import
 try:
@@ -221,6 +224,14 @@ class PostIn(BaseModel):
     shares: int = 0
     submission_id: Optional[str] = None
 
+class NewsletterContentEdit(BaseModel):
+    subject_line: str
+    newsletter_body: str
+    homepage_summary: str
+
+class NewsletterReject(BaseModel):
+    reason: str = ""
+
 # -----------------------
 # Startup
 # -----------------------
@@ -230,6 +241,7 @@ async def startup():
     await db.submissions.create_index("submitter_email")
     await db.password_reset_tokens.create_index("token", unique=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    await db.newsletter_runs.create_index("created_at")
     # Seed admin / co-admin accounts (unclaimed - no password_hash)
     for email, role in [(e, "admin") for e in SEED_ADMIN_EMAILS] + [(e, "co_admin") for e in SEED_COADMIN_EMAILS]:
         existing = await db.users.find_one({"email": email})
@@ -671,6 +683,178 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         "by_platform": by_platform,
         "by_club": by_club,
     }
+
+# -----------------------
+# AI Newsletter Pipeline
+# -----------------------
+NEWSLETTER_MAX_REVISIONS = 1  # cap the Content<->Evaluation correction loop
+
+def newsletter_body_to_html(text: str) -> str:
+    paragraphs = [p.strip() for p in (text or "").split("\n\n") if p.strip()]
+    return "".join(f"<p>{html.escape(p).replace(chr(10), '<br>')}</p>" for p in paragraphs)
+
+async def _send_single_newsletter_email(to: str, subject: str, html_body: str) -> dict:
+    key = os.environ.get("RESEND_API_KEY", "")
+    if not key or resend is None:
+        return {"to": to, "ok": False, "reason": "email_disabled"}
+    try:
+        resend.api_key = key
+        params = {"from": SENDER_EMAIL, "to": [to], "subject": subject, "html": html_body}
+        await asyncio.to_thread(resend.Emails.send, params)
+        return {"to": to, "ok": True}
+    except Exception as e:
+        return {"to": to, "ok": False, "reason": str(e)}
+
+async def send_newsletter_email_blast(subject: str, html_body: str) -> dict:
+    recipients = await db.users.find({}, {"_id": 0, "email": 1}).to_list(5000)
+    emails = [r["email"] for r in recipients if r.get("email")]
+    if not emails:
+        return {"attempted": 0, "succeeded": 0, "results": []}
+    results = await asyncio.gather(*[_send_single_newsletter_email(e, subject, html_body) for e in emails])
+    succeeded = sum(1 for r in results if r.get("ok"))
+    logger.info(f"[NEWSLETTER EMAIL BLAST] sent={succeeded}/{len(emails)}")
+    return {"attempted": len(emails), "succeeded": succeeded, "results": results}
+
+async def run_newsletter_pipeline(run_id: str):
+    async def update(fields: dict):
+        fields["updated_at"] = now_iso()
+        await db.newsletter_runs.update_one({"id": run_id}, {"$set": fields})
+
+    try:
+        await update({"status": "research_running"})
+        today_iso = datetime.now(timezone.utc).date().isoformat()
+        research_items = await agents.run_research_agent(today_iso)
+        await update({"status": "content_running", "research_items": research_items})
+
+        content = await agents.run_content_agent(research_items)
+        await update({"status": "evaluation_running", "content": content, "content_original": content})
+
+        evaluation = await agents.run_evaluation_agent(content, research_items)
+        await update({"evaluation": evaluation})
+
+        revision_count = 0
+        while evaluation.get("overall_risk") == "high" and revision_count < NEWSLETTER_MAX_REVISIONS:
+            revision_count += 1
+            await update({"status": "revising", "revision_count": revision_count})
+            content = await agents.run_content_agent(research_items, revision_notes=evaluation.get("flagged_claims", []))
+            await update({"content": content, "content_original": content, "status": "evaluation_running"})
+            evaluation = await agents.run_evaluation_agent(content, research_items)
+            await update({"evaluation": evaluation})
+
+        await update({"status": "ready_for_review"})
+    except Exception as e:
+        logger.error(f"[NEWSLETTER PIPELINE FAILED] run_id={run_id} err={e}")
+        await update({"status": "failed", "error": str(e)})
+
+@api.post("/admin/newsletter/runs")
+async def create_newsletter_run(admin: dict = Depends(require_admin)):
+    run_id = str(uuid.uuid4())
+    doc = {
+        "id": run_id,
+        "status": "queued",
+        "research_items": [],
+        "content": None,
+        "content_original": None,
+        "evaluation": None,
+        "revision_count": 0,
+        "error": None,
+        "triggered_by": admin["email"],
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+        "approved_by": None,
+        "approved_at": None,
+        "rejected_by": None,
+        "rejected_at": None,
+        "rejection_reason": None,
+        "sent_at": None,
+        "send_results": None,
+        "approval_log": [],
+    }
+    await db.newsletter_runs.insert_one(doc)
+    asyncio.create_task(run_newsletter_pipeline(run_id))
+    doc.pop("_id", None)
+    return doc
+
+@api.get("/admin/newsletter/runs")
+async def list_newsletter_runs(admin: dict = Depends(require_admin)):
+    docs = await db.newsletter_runs.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return docs
+
+@api.get("/admin/newsletter/runs/{run_id}")
+async def get_newsletter_run(run_id: str, admin: dict = Depends(require_admin)):
+    doc = await db.newsletter_runs.find_one({"id": run_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Newsletter run not found")
+    return doc
+
+@api.put("/admin/newsletter/runs/{run_id}/content")
+async def edit_newsletter_content(run_id: str, payload: NewsletterContentEdit, admin: dict = Depends(require_admin)):
+    run = await db.newsletter_runs.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(404, "Newsletter run not found")
+    if run.get("status") != "ready_for_review":
+        raise HTTPException(400, "Can only edit content while the run is ready for review")
+    # Merge rather than replace so fields the reviewer doesn't edit (e.g. sources_used)
+    # survive - a wholesale replace would make every save look like an edit later.
+    merged_content = {**(run.get("content") or {}), **payload.model_dump()}
+    update = {"content": merged_content, "updated_at": now_iso()}
+    await db.newsletter_runs.update_one({"id": run_id}, {"$set": update})
+    doc = await db.newsletter_runs.find_one({"id": run_id}, {"_id": 0})
+    return doc
+
+@api.post("/admin/newsletter/runs/{run_id}/approve")
+async def approve_newsletter_run(run_id: str, admin: dict = Depends(require_admin)):
+    run = await db.newsletter_runs.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(404, "Newsletter run not found")
+    if run.get("status") != "ready_for_review":
+        raise HTTPException(400, "Run is not ready for review")
+
+    content = run.get("content") or {}
+    original = run.get("content_original") or {}
+    edits_made = content != original
+
+    subject = content.get("subject_line", "ISME AI Newsletter")
+    html_body = email_template(subject, newsletter_body_to_html(content.get("newsletter_body", "")))
+    email_result = await send_newsletter_email_blast(subject, html_body)
+
+    whatsapp_text = f"{content.get('homepage_summary', '')}\n\nRead the full newsletter: {FRONTEND_URL}/admin/newsletter/{run_id}"
+    whatsapp_result = await agents.send_whatsapp_broadcast(whatsapp_text[:1500])
+
+    approval_entry = {"date": now_iso(), "reviewer_email": admin["email"], "edits_made": edits_made}
+    update = {
+        "status": "sent",
+        "approved_by": admin["email"],
+        "approved_at": now_iso(),
+        "sent_at": now_iso(),
+        "send_results": {"email": email_result, "whatsapp": whatsapp_result},
+        "updated_at": now_iso(),
+    }
+    await db.newsletter_runs.update_one({"id": run_id}, {"$set": update, "$push": {"approval_log": approval_entry}})
+    doc = await db.newsletter_runs.find_one({"id": run_id}, {"_id": 0})
+    return doc
+
+@api.post("/admin/newsletter/runs/{run_id}/reject")
+async def reject_newsletter_run(run_id: str, payload: NewsletterReject, admin: dict = Depends(require_admin)):
+    run = await db.newsletter_runs.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(404, "Newsletter run not found")
+    if run.get("status") != "ready_for_review":
+        raise HTTPException(400, "Run is not ready for review")
+    update = {
+        "status": "rejected",
+        "rejected_by": admin["email"],
+        "rejected_at": now_iso(),
+        "rejection_reason": payload.reason,
+        "updated_at": now_iso(),
+    }
+    approval_entry = {
+        "date": now_iso(), "reviewer_email": admin["email"], "edits_made": False,
+        "rejected": True, "reason": payload.reason,
+    }
+    await db.newsletter_runs.update_one({"id": run_id}, {"$set": update, "$push": {"approval_log": approval_entry}})
+    doc = await db.newsletter_runs.find_one({"id": run_id}, {"_id": 0})
+    return doc
 
 app.include_router(api)
 

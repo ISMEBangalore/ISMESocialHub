@@ -14,6 +14,14 @@ const styles = {
   low: "bg-neutral-200 text-black border-black",
   medium: "bg-yellow-300 text-black border-black",
   high: "bg-rose-400 text-white border-black",
+  queued: "bg-neutral-200 text-black border-black",
+  research_running: "bg-sky-300 text-black border-black",
+  content_running: "bg-sky-300 text-black border-black",
+  evaluation_running: "bg-sky-300 text-black border-black",
+  revising: "bg-orange-300 text-black border-black",
+  ready_for_review: "bg-yellow-300 text-black border-black",
+  sent: "bg-blue-600 text-white border-black",
+  failed: "bg-rose-600 text-white border-black",
 };
 
 const labels = {
@@ -30,6 +38,14 @@ const labels = {
   low: "LOW",
   medium: "MEDIUM",
   high: "HIGH",
+  queued: "QUEUED",
+  research_running: "RESEARCHING",
+  content_running: "WRITING",
+  evaluation_running: "FACT-CHECKING",
+  revising: "REVISING",
+  ready_for_review: "READY FOR REVIEW",
+  sent: "SENT",
+  failed: "FAILED",
 };
 
 export default function StatusBadge({ status, testId }) {
