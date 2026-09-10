@@ -251,6 +251,14 @@ export default function NewsletterPipeline() {
                   </div>
 
                   <div>
+                    <label className="text-xs font-bold text-neutral-500">ISME's Analysis (leads the newsletter)</label>
+                    <Textarea data-testid="newsletter-analysis" value={draft.analysis || ""}
+                      disabled={!editable}
+                      onChange={(e) => setDraft({ ...draft, analysis: e.target.value })}
+                      rows={3} className="border-2 border-black rounded-lg mt-1" />
+                  </div>
+
+                  <div>
                     <label className="text-xs font-bold text-neutral-500">Intro</label>
                     <Textarea data-testid="newsletter-intro" value={draft.intro || ""}
                       disabled={!editable}

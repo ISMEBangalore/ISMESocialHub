@@ -147,6 +147,13 @@ backend renders your fields into the actual page and email, so keep each field
 plain text, no markdown/HTML):
 
 - subject_line: under 60 characters, specific - not "This Week in AI"
+- analysis: a short (3-5 sentence) lead analysis, in ISME's voice, that
+  synthesizes the pattern(s) or connecting theme(s) across ALL of the
+  research items provided - not just the ones you feature below. This runs
+  at the top of the newsletter, above the individual items, as ISME's own
+  read of the week. It must still trace every specific claim to a
+  source_url from the input; it's a synthesis of what's there, not new
+  commentary beyond it.
 - intro: one sentence framing the week
 - items: 4-6 entries, each:
   - headline: plain-language headline
@@ -172,6 +179,7 @@ CONTENT_SCHEMA = {
     "type": "object",
     "properties": {
         "subject_line": {"type": "string"},
+        "analysis": {"type": "string"},
         "intro": {"type": "string"},
         "items": {
             "type": "array",
@@ -201,7 +209,7 @@ CONTENT_SCHEMA = {
         },
         "sources_used": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["subject_line", "intro", "items", "skill_takeaway", "homepage_highlights", "sources_used"],
+    "required": ["subject_line", "analysis", "intro", "items", "skill_takeaway", "homepage_highlights", "sources_used"],
     "additionalProperties": False,
 }
 
@@ -233,11 +241,12 @@ EVAL_SYSTEM = """You are the fact-check and authenticity agent for ISME's AI new
 You are the last automated check before human review - your job is to make the
 human reviewer's job fast, not to approve content.
 
-Input: the Content Agent's JSON output (intro, items[].blurb, skill_takeaway,
-homepage_highlights[].text) AND the original Research Agent JSON array.
+Input: the Content Agent's JSON output (analysis, intro, items[].blurb,
+skill_takeaway, homepage_highlights[].text) AND the original Research Agent
+JSON array.
 
-For every factual claim in intro, each items[].blurb, skill_takeaway, and each
-homepage_highlights[].text:
+For every factual claim in analysis, intro, each items[].blurb,
+skill_takeaway, and each homepage_highlights[].text:
 1. Locate the specific research item it should trace back to.
 2. Mark it: "verified" (matches a research item exactly), "overstated" (research
    item exists but claim adds unsupported certainty/specificity), or "unsupported"
