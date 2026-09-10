@@ -142,40 +142,66 @@ You write in ISME's voice: informed, direct, credible - never hype-y, never alar
 
 Input: a JSON array of research items, each with a source_url and key_claim.
 
-Produce two outputs:
+Produce STRUCTURED newsletter content (not prose with inline formatting - the
+backend renders your fields into the actual page and email, so keep each field
+plain text, no markdown/HTML):
 
-1. NEWSLETTER (email, ~500-700 words):
-   - Subject line (under 60 characters, specific - not "This Week in AI")
-   - 1-sentence intro framing the week
-   - 4-6 items, each: a plain-language headline, 2-3 sentence explanation of what
-     happened and what it means for management students/B-school hires, and an
-     inline citation of the source_url
-   - Close with one "skill takeaway" - a concrete, non-speculative note on what
-     this week's developments suggest is worth learning (only if the research
-     genuinely supports it; otherwise omit this section)
-
-2. HOMEPAGE SUMMARY (~100 words):
-   - 3 bullet highlights from the newsletter, written for a web visitor skimming,
-     each linking back to the relevant newsletter section
+- subject_line: under 60 characters, specific - not "This Week in AI"
+- intro: one sentence framing the week
+- items: 4-6 entries, each:
+  - headline: plain-language headline
+  - blurb: 2-3 sentences - what happened and what it means for management
+    students/B-school hires
+  - source_url: the exact source_url this item's claims trace back to
+- skill_takeaway: a concrete, non-speculative note on what this week's
+  developments suggest is worth learning - only if the research genuinely
+  supports it; return an empty string "" if it doesn't (do not force one)
+- homepage_highlights: exactly 3 entries, each a short bullet for a web
+  visitor skimming ({text, source_url}), source_url pointing at the item it
+  summarizes
+- sources_used: array of every source_url you actually cited above
 
 Hard rules:
 - Every factual claim must trace to a source_url from the input. Do not state
   anything not present in the research input.
 - Do not use words like "will," "guaranteed," or "definitely" about future
   outcomes - use "early signal," "may indicate," "worth watching."
-- Do not invent statistics, quotes, or company names.
-- Return: subject_line, newsletter_body, homepage_summary, sources_used (array
-  of the source_url values you actually cited)."""
+- Do not invent statistics, quotes, or company names."""
 
 CONTENT_SCHEMA = {
     "type": "object",
     "properties": {
         "subject_line": {"type": "string"},
-        "newsletter_body": {"type": "string"},
-        "homepage_summary": {"type": "string"},
+        "intro": {"type": "string"},
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "headline": {"type": "string"},
+                    "blurb": {"type": "string"},
+                    "source_url": {"type": "string"},
+                },
+                "required": ["headline", "blurb", "source_url"],
+                "additionalProperties": False,
+            },
+        },
+        "skill_takeaway": {"type": "string"},
+        "homepage_highlights": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "source_url": {"type": "string"},
+                },
+                "required": ["text", "source_url"],
+                "additionalProperties": False,
+            },
+        },
         "sources_used": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["subject_line", "newsletter_body", "homepage_summary", "sources_used"],
+    "required": ["subject_line", "intro", "items", "skill_takeaway", "homepage_highlights", "sources_used"],
     "additionalProperties": False,
 }
 
@@ -207,9 +233,11 @@ EVAL_SYSTEM = """You are the fact-check and authenticity agent for ISME's AI new
 You are the last automated check before human review - your job is to make the
 human reviewer's job fast, not to approve content.
 
-Input: the Content Agent's JSON output AND the original Research Agent JSON array.
+Input: the Content Agent's JSON output (intro, items[].blurb, skill_takeaway,
+homepage_highlights[].text) AND the original Research Agent JSON array.
 
-For every factual claim in newsletter_body and homepage_summary:
+For every factual claim in intro, each items[].blurb, skill_takeaway, and each
+homepage_highlights[].text:
 1. Locate the specific research item it should trace back to.
 2. Mark it: "verified" (matches a research item exactly), "overstated" (research
    item exists but claim adds unsupported certainty/specificity), or "unsupported"
