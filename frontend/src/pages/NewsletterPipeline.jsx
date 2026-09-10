@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import StatusBadge from "@/components/StatusBadge";
 import { toast } from "sonner";
-import { Sparkles, Mail, MessageCircle, ShieldAlert, ShieldCheck, RefreshCw, ExternalLink, Pencil } from "lucide-react";
+import { Sparkles, Mail, MessageCircle, ShieldAlert, ShieldCheck, RefreshCw, ExternalLink, Pencil, X, Globe } from "lucide-react";
 
 const RUNNING_STATUSES = ["queued", "research_running", "content_running", "evaluation_running", "revising"];
 
@@ -82,6 +82,20 @@ export default function NewsletterPipeline() {
     setActive(run);
     setDraft(run.content || null);
     setRejectReason("");
+  };
+
+  const editable = active?.status === "ready_for_review";
+
+  const updateItem = (i, patch) => {
+    const items = draft.items.map((it, idx) => (idx === i ? { ...it, ...patch } : it));
+    setDraft({ ...draft, items });
+  };
+  const removeItem = (i) => {
+    setDraft({ ...draft, items: draft.items.filter((_, idx) => idx !== i) });
+  };
+  const updateHighlight = (i, patch) => {
+    const homepage_highlights = draft.homepage_highlights.map((h, idx) => (idx === i ? { ...h, ...patch } : h));
+    setDraft({ ...draft, homepage_highlights });
   };
 
   const saveEdits = async () => {
@@ -231,28 +245,76 @@ export default function NewsletterPipeline() {
                   <div>
                     <label className="text-xs font-bold text-neutral-500">Subject line</label>
                     <Input data-testid="newsletter-subject" value={draft.subject_line || ""}
-                      disabled={active.status !== "ready_for_review"}
+                      disabled={!editable}
                       onChange={(e) => setDraft({ ...draft, subject_line: e.target.value })}
                       className="border-2 border-black rounded-lg mt-1" />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-neutral-500">Newsletter body</label>
-                    <Textarea data-testid="newsletter-body" value={draft.newsletter_body || ""}
-                      disabled={active.status !== "ready_for_review"}
-                      onChange={(e) => setDraft({ ...draft, newsletter_body: e.target.value })}
-                      rows={14} className="border-2 border-black rounded-lg mt-1 font-mono text-xs" />
+                    <label className="text-xs font-bold text-neutral-500">Intro</label>
+                    <Textarea data-testid="newsletter-intro" value={draft.intro || ""}
+                      disabled={!editable}
+                      onChange={(e) => setDraft({ ...draft, intro: e.target.value })}
+                      rows={2} className="border-2 border-black rounded-lg mt-1" />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-neutral-500">Homepage summary</label>
-                    <Textarea data-testid="newsletter-homepage" value={draft.homepage_summary || ""}
-                      disabled={active.status !== "ready_for_review"}
-                      onChange={(e) => setDraft({ ...draft, homepage_summary: e.target.value })}
-                      rows={4} className="border-2 border-black rounded-lg mt-1" />
+                    <label className="text-xs font-bold text-neutral-500">Items</label>
+                    <div className="space-y-3 mt-1">
+                      {(draft.items || []).map((item, i) => (
+                        <div key={i} className="border-2 border-black rounded-lg p-3 bg-white space-y-2">
+                          <div className="flex items-start gap-2">
+                            <Input data-testid={`newsletter-item-headline-${i}`} value={item.headline || ""}
+                              disabled={!editable} placeholder="Headline"
+                              onChange={(e) => updateItem(i, { headline: e.target.value })}
+                              className="border-2 border-black rounded-lg font-semibold" />
+                            {editable && (
+                              <Button type="button" size="icon" variant="outline" data-testid={`newsletter-item-remove-${i}`}
+                                onClick={() => removeItem(i)} className="border-2 border-black rounded-lg shrink-0">
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                          <Textarea data-testid={`newsletter-item-blurb-${i}`} value={item.blurb || ""}
+                            disabled={!editable} placeholder="Blurb"
+                            onChange={(e) => updateItem(i, { blurb: e.target.value })}
+                            rows={2} className="border-2 border-black rounded-lg text-sm" />
+                          <Input data-testid={`newsletter-item-source-${i}`} value={item.source_url || ""}
+                            disabled={!editable} placeholder="Source URL"
+                            onChange={(e) => updateItem(i, { source_url: e.target.value })}
+                            className="border-2 border-black rounded-lg text-xs" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  {active.status === "ready_for_review" && (
+                  <div>
+                    <label className="text-xs font-bold text-neutral-500">Skill takeaway (leave blank to omit)</label>
+                    <Textarea data-testid="newsletter-takeaway" value={draft.skill_takeaway || ""}
+                      disabled={!editable}
+                      onChange={(e) => setDraft({ ...draft, skill_takeaway: e.target.value })}
+                      rows={2} className="border-2 border-black rounded-lg mt-1" />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-neutral-500">Homepage highlights</label>
+                    <div className="space-y-2 mt-1">
+                      {(draft.homepage_highlights || []).map((h, i) => (
+                        <div key={i} className="flex gap-2">
+                          <Input data-testid={`newsletter-highlight-text-${i}`} value={h.text || ""}
+                            disabled={!editable} placeholder="Highlight"
+                            onChange={(e) => updateHighlight(i, { text: e.target.value })}
+                            className="border-2 border-black rounded-lg text-sm" />
+                          <Input data-testid={`newsletter-highlight-source-${i}`} value={h.source_url || ""}
+                            disabled={!editable} placeholder="Source URL"
+                            onChange={(e) => updateHighlight(i, { source_url: e.target.value })}
+                            className="border-2 border-black rounded-lg text-xs w-1/3" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {editable && (
                     <Button data-testid="newsletter-save-edits" onClick={saveEdits} variant="outline"
                       className="border-2 border-black rounded-full font-bold">
                       Save edits
@@ -312,6 +374,10 @@ export default function NewsletterPipeline() {
                   <div className="font-black flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-600" /> Sent</div>
                   <div className="text-sm flex items-center gap-2"><Mail className="w-4 h-4" /> Email: {active.send_results.email?.succeeded ?? 0}/{active.send_results.email?.attempted ?? 0} delivered</div>
                   <div className="text-sm flex items-center gap-2"><MessageCircle className="w-4 h-4" /> WhatsApp: {active.send_results.whatsapp?.sent ? `${active.send_results.whatsapp.succeeded}/${active.send_results.whatsapp.recipients} delivered` : "not configured"}</div>
+                  <a href={`/newsletter/${active.id}`} target="_blank" rel="noreferrer" data-testid="newsletter-public-link"
+                    className="text-sm flex items-center gap-2 text-blue-700 font-semibold underline mt-1">
+                    <Globe className="w-4 h-4" /> View the public page
+                  </a>
                 </div>
               )}
 

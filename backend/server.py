@@ -224,10 +224,21 @@ class PostIn(BaseModel):
     shares: int = 0
     submission_id: Optional[str] = None
 
+class NewsletterItemEdit(BaseModel):
+    headline: str
+    blurb: str
+    source_url: str = ""
+
+class NewsletterHighlightEdit(BaseModel):
+    text: str
+    source_url: str = ""
+
 class NewsletterContentEdit(BaseModel):
     subject_line: str
-    newsletter_body: str
-    homepage_summary: str
+    intro: str
+    items: List[NewsletterItemEdit]
+    skill_takeaway: str = ""
+    homepage_highlights: List[NewsletterHighlightEdit]
 
 class NewsletterReject(BaseModel):
     reason: str = ""
@@ -689,9 +700,26 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
 # -----------------------
 NEWSLETTER_MAX_REVISIONS = 1  # cap the Content<->Evaluation correction loop
 
-def newsletter_body_to_html(text: str) -> str:
-    paragraphs = [p.strip() for p in (text or "").split("\n\n") if p.strip()]
-    return "".join(f"<p>{html.escape(p).replace(chr(10), '<br>')}</p>" for p in paragraphs)
+def render_newsletter_body_html(content: dict, public_url: str) -> str:
+    """Renders the structured content agent output into the branded HTML used for
+    both the email body and the public newsletter page - one template, two uses,
+    so the AI never hand-authors markup."""
+    parts = [f"<p style='font-size:16px;'>{html.escape(content.get('intro', ''))}</p>"]
+    for item in content.get("items", []):
+        parts.append(f"""
+<div style="margin:20px 0; padding-left:16px; border-left:3px solid #3B82F6;">
+  <h3 style="margin:0 0 6px 0; font-size:17px; color:#0A0A0A;">{html.escape(item.get('headline', ''))}</h3>
+  <p style="margin:0 0 6px 0;">{html.escape(item.get('blurb', ''))}</p>
+  <a href="{html.escape(item.get('source_url', ''), quote=True)}" style="font-size:13px; color:#3B82F6;">Read the source &rarr;</a>
+</div>""")
+    takeaway = content.get("skill_takeaway", "")
+    if takeaway:
+        parts.append(f"""
+<div style="margin-top:24px; padding:16px; background:#FEF9C3; border-radius:8px;">
+  <b>Skill takeaway:</b> {html.escape(takeaway)}
+</div>""")
+    parts.append(f"""<p style="margin-top:28px; font-size:13px;"><a href="{html.escape(public_url, quote=True)}" style="color:#3B82F6;">View this newsletter online</a></p>""")
+    return "".join(parts)
 
 async def _send_single_newsletter_email(to: str, subject: str, html_body: str) -> dict:
     key = os.environ.get("RESEND_API_KEY", "")
@@ -814,11 +842,13 @@ async def approve_newsletter_run(run_id: str, admin: dict = Depends(require_admi
     original = run.get("content_original") or {}
     edits_made = content != original
 
+    public_url = f"{FRONTEND_URL}/newsletter/{run_id}"
     subject = content.get("subject_line", "ISME AI Newsletter")
-    html_body = email_template(subject, newsletter_body_to_html(content.get("newsletter_body", "")))
+    html_body = email_template(subject, render_newsletter_body_html(content, public_url))
     email_result = await send_newsletter_email_blast(subject, html_body)
 
-    whatsapp_text = f"{content.get('homepage_summary', '')}\n\nRead the full newsletter: {FRONTEND_URL}/admin/newsletter/{run_id}"
+    highlights = "\n".join(f"- {h.get('text', '')}" for h in content.get("homepage_highlights", []))
+    whatsapp_text = f"{highlights}\n\nRead the full newsletter: {public_url}"
     whatsapp_result = await agents.send_whatsapp_broadcast(whatsapp_text[:1500])
 
     approval_entry = {"date": now_iso(), "reviewer_email": admin["email"], "edits_made": edits_made}
@@ -855,6 +885,16 @@ async def reject_newsletter_run(run_id: str, payload: NewsletterReject, admin: d
     await db.newsletter_runs.update_one({"id": run_id}, {"$set": update, "$push": {"approval_log": approval_entry}})
     doc = await db.newsletter_runs.find_one({"id": run_id}, {"_id": 0})
     return doc
+
+# Public page for a sent newsletter (linked from the email / WhatsApp broadcast).
+# Never exposes drafts - only a run that has actually been approved and sent.
+@api.get("/newsletter/{run_id}")
+async def get_public_newsletter(run_id: str):
+    doc = await db.newsletter_runs.find_one({"id": run_id, "status": "sent"}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Newsletter not found")
+    content = doc.get("content") or {}
+    return {**content, "sent_at": doc.get("sent_at")}
 
 app.include_router(api)
 
