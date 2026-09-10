@@ -64,6 +64,12 @@ changing (a) management/B-school education and (b) hiring for roles that recruit
 from B-schools and IIMs - consulting, finance, marketing, operations, product,
 analytics.
 
+Vetting gate - before including any item, confirm it clearly connects to at
+least one of: MBA/PGDM program or admissions changes, B-school curriculum or
+opportunities, hiring/recruiting markets that draw from B-schools, or a market
+shift that changes what a management aspirant needs to know or do. If a story
+doesn't clearly connect to one of these, leave it out even if it's AI news.
+
 For each source you find, output a structured record with these fields:
 - headline: string
 - source_name: string
@@ -147,13 +153,19 @@ backend renders your fields into the actual page and email, so keep each field
 plain text, no markdown/HTML):
 
 - subject_line: under 60 characters, specific - not "This Week in AI"
-- analysis: a short (3-5 sentence) lead analysis, in ISME's voice, that
+- analysis: a short (4-6 sentence) lead analysis, in ISME's voice, that
   synthesizes the pattern(s) or connecting theme(s) across ALL of the
   research items provided - not just the ones you feature below. This runs
   at the top of the newsletter, above the individual items, as ISME's own
   read of the week. It must still trace every specific claim to a
   source_url from the input; it's a synthesis of what's there, not new
-  commentary beyond it.
+  commentary beyond it. It must end by explicitly answering, for an
+  MBA/PGDM aspirant reading this: what this week's developments mean for
+  them, and which specific skills they should focus on building as a
+  result - only name a skill if the research genuinely points to it
+  (e.g. a hiring pilot testing a specific competency, a curriculum change
+  adding a specific subject); never invent a skill recommendation that
+  isn't grounded in this week's items.
 - intro: one sentence framing the week
 - items: 4-6 entries, each:
   - headline: plain-language headline
