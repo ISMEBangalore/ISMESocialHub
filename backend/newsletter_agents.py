@@ -88,9 +88,9 @@ RESEARCH_SCHEMA = {
     "type": "object",
     "properties": {
         "items": {
+            # No minItems/maxItems: structured-output array schemas only support
+            # bounds of 0 or 1 - the 8-12 count is enforced by the prompt instead.
             "type": "array",
-            "minItems": 8,
-            "maxItems": 12,
             "items": {
                 "type": "object",
                 "properties": {
