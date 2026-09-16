@@ -389,3 +389,44 @@ async def send_whatsapp_broadcast(message: str) -> dict:
     sent_count = sum(1 for r in results if r.get("ok"))
     logger.info(f"[WHATSAPP BROADCAST] sent={sent_count}/{len(recipients)}")
     return {"sent": True, "recipients": len(recipients), "succeeded": sent_count, "results": results}
+
+
+async def send_whatsapp_image_broadcast(image_url: str, caption: str) -> dict:
+    """Sends an image message (with caption) to every number in
+    WHATSAPP_BROADCAST_LIST. image_url must be publicly fetchable - Meta's
+    servers download it directly, no auth header is sent. No-ops (and logs)
+    if not configured, same as send_whatsapp_broadcast."""
+    import asyncio
+
+    token = os.environ.get("WHATSAPP_API_TOKEN", "")
+    phone_number_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
+    recipients = [r.strip() for r in os.environ.get("WHATSAPP_BROADCAST_LIST", "").split(",") if r.strip()]
+
+    if not token or not phone_number_id or not recipients:
+        logger.info("[WHATSAPP DISABLED] WhatsApp Business API not configured; skipping image broadcast")
+        return {"sent": False, "reason": "not_configured", "recipients": 0}
+
+    def _send_one(to: str):
+        url = f"https://graph.facebook.com/v20.0/{phone_number_id}/messages"
+        payload = json.dumps({
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "image",
+            "image": {"link": image_url, "caption": caption[:1024]},
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=payload, method="POST",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                return {"to": to, "ok": True, "status": resp.status}
+        except urllib.error.HTTPError as e:
+            return {"to": to, "ok": False, "status": e.code, "error": e.read().decode("utf-8", "ignore")}
+        except Exception as e:
+            return {"to": to, "ok": False, "error": str(e)}
+
+    results = await asyncio.gather(*[asyncio.to_thread(_send_one, r) for r in recipients])
+    sent_count = sum(1 for r in results if r.get("ok"))
+    logger.info(f"[WHATSAPP IMAGE BROADCAST] sent={sent_count}/{len(recipients)}")
+    return {"sent": True, "recipients": len(recipients), "succeeded": sent_count, "results": results}

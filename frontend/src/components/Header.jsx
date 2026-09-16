@@ -5,7 +5,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Inbox, CalendarDays, Calendar, CalendarClock, Users, Flag, LogOut, Send, Menu, X, User2, Search, Sparkles } from "lucide-react";
+import { LayoutDashboard, Inbox, CalendarDays, Calendar, CalendarClock, Users, Flag, LogOut, Send, Menu, X, User2, Search, Sparkles, PartyPopper } from "lucide-react";
 import { useState } from "react";
 import { isAdminRole, roleLabel } from "@/lib/roles";
 
@@ -16,6 +16,7 @@ const memberLinks = [
   { to: "/events", label: "Events", icon: Calendar, testId: "nav-events" },
   { to: "/houses", label: "Houses", icon: Flag, testId: "nav-houses" },
   { to: "/calendar", label: "SDC Calendar", icon: CalendarClock, testId: "nav-calendar" },
+  { to: "/festivities", label: "Festivities", icon: PartyPopper, testId: "nav-festivities" },
 ];
 const adminLinks = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, testId: "nav-dashboard" },
@@ -26,6 +27,7 @@ const adminLinks = [
   { to: "/events", label: "Events", icon: Calendar, testId: "nav-events" },
   { to: "/houses", label: "Houses", icon: Flag, testId: "nav-houses" },
   { to: "/calendar", label: "SDC Calendar", icon: CalendarClock, testId: "nav-calendar" },
+  { to: "/festivities", label: "Festivities", icon: PartyPopper, testId: "nav-festivities" },
 ];
 
 export default function Header() {

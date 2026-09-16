@@ -22,6 +22,7 @@ const styles = {
   ready_for_review: "bg-yellow-300 text-black border-black",
   sent: "bg-blue-600 text-white border-black",
   failed: "bg-rose-600 text-white border-black",
+  generating: "bg-sky-300 text-black border-black",
 };
 
 const labels = {
@@ -46,6 +47,7 @@ const labels = {
   ready_for_review: "READY FOR REVIEW",
   sent: "SENT",
   failed: "FAILED",
+  generating: "GENERATING",
 };
 
 export default function StatusBadge({ status, testId }) {
@@ -68,6 +70,29 @@ export const PLATFORM_COLORS = {
   YouTube: "#DC2626",
   Facebook: "#2563EB",
 };
+
+export const FESTIVAL_CATEGORY_COLORS = {
+  national: "#1B4F9C",
+  hindu: "#E8901A",
+  muslim: "#137A5C",
+  sikh: "#B4791E",
+  christian: "#8B1E3F",
+  jain: "#7A6230",
+  buddhist: "#B4791E",
+};
+
+export function CategoryPill({ category, testId }) {
+  const color = FESTIVAL_CATEGORY_COLORS[category] || "#71717A";
+  return (
+    <span
+      data-testid={testId}
+      className="inline-flex items-center px-2 py-0.5 rounded-md border-2 border-black text-[10px] font-black uppercase tracking-widest text-white"
+      style={{ background: color }}
+    >
+      {category}
+    </span>
+  );
+}
 
 export function PlatformPill({ platform, testId }) {
   const color = PLATFORM_COLORS[platform] || "#3B82F6";
