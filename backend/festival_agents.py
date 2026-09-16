@@ -33,13 +33,19 @@ IMAGE_SIZE = 1080
 
 # -----------------------------------------------------------------------
 # AI-generated illustrated background (optional). If OPENAI_API_KEY is set,
-# each greeting gets a real illustrated festive scene from DALL-E instead of
-# the geometric gradient+motif fallback below. The greeting card and ISME
-# logo pill are still composited locally on top either way, so branding and
-# text stay crisp and identical regardless of which background was used.
-# Fully optional and fails soft: any error (no key, quota, network, content
-# policy) just falls back to the deterministic Pillow background.
+# each greeting gets a real illustrated festive scene from OpenAI's GPT
+# image models instead of the geometric gradient+motif fallback below. The
+# greeting card and ISME logo pill are still composited locally on top
+# either way, so branding and text stay crisp regardless of which
+# background was used. Tries gpt-image-2 (current flagship - reasons about
+# the prompt before generating, best text/detail accuracy) first, then
+# falls back to gpt-image-1 if that model isn't available on the account.
+# DALL-E 2/3 are not used: OpenAI shut them down on 2026-05-12. Fully
+# optional and fails soft: any error (no key, quota, network, content
+# policy, model unavailable) falls back to the deterministic Pillow
+# background.
 # -----------------------------------------------------------------------
+_AI_MODELS_IN_PREFERENCE_ORDER = ["gpt-image-2", "gpt-image-1"]
 _AI_PROMPT_BY_MOTIF = {
     "diya": "rows of glowing terracotta oil lamps (diyas) with warm golden flames, "
             "scattered marigold petals, soft bokeh light",
@@ -74,29 +80,29 @@ def _call_openai_image_api(prompt: str) -> Optional[bytes]:
     if not api_key:
         return None
     url = "https://api.openai.com/v1/images/generations"
-    payload = json.dumps({
-        "model": "dall-e-3",
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024",
-        "quality": "standard",
-        "style": "vivid",
-        "response_format": "b64_json",
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=payload, method="POST",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        return base64.b64decode(data["data"][0]["b64_json"])
-    except urllib.error.HTTPError as e:
-        logger.warning(f"[AI BACKGROUND] OpenAI HTTP error {e.code}: {e.read().decode('utf-8', 'ignore')}")
-        return None
-    except Exception as e:
-        logger.warning(f"[AI BACKGROUND] OpenAI image call failed: {e}")
-        return None
+    for model in _AI_MODELS_IN_PREFERENCE_ORDER:
+        payload = json.dumps({
+            "model": model,
+            "prompt": prompt,
+            "n": 1,
+            "size": "1024x1024",
+            "quality": "high",
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=payload, method="POST",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            return base64.b64decode(data["data"][0]["b64_json"])
+        except urllib.error.HTTPError as e:
+            logger.warning(f"[AI BACKGROUND] {model} HTTP error {e.code}: {e.read().decode('utf-8', 'ignore')}")
+            continue
+        except Exception as e:
+            logger.warning(f"[AI BACKGROUND] {model} call failed: {e}")
+            continue
+    return None
 
 
 async def generate_ai_background(festival: dict) -> Optional[Image.Image]:
