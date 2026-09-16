@@ -1,12 +1,13 @@
 """Indian festival greeting generator for ISME's Festivities feature.
 
 Two independent pieces:
-- A short Claude-written WhatsApp greeting message (structured output, same
-  pattern as newsletter_agents.py).
-- A programmatic festive greeting card image, rendered locally with Pillow
-  (no model call) - a gradient-mesh background, a festival-specific motif,
-  a glass "sticker" card with the greeting, and the ISME logo composited
-  into a branded corner badge. Deterministic and free to regenerate.
+- A short Claude-written WhatsApp greeting message plus a subtle one-line
+  image tagline (structured output, same pattern as newsletter_agents.py).
+- A greeting card image: an OpenAI GPT-image illustration for the scene
+  (falls back to a local Pillow gradient/motif if no key or the call fails),
+  with a corner ISME logo badge and a lower glass card (eyebrow + headline +
+  subline) composited locally on top either way, so branding and text stay
+  identical regardless of which background was used.
 """
 import asyncio
 import base64
@@ -20,7 +21,7 @@ import urllib.request
 from io import BytesIO
 from typing import Optional
 
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageStat
 
 import newsletter_agents as agents
 
@@ -46,32 +47,94 @@ IMAGE_SIZE = 1080
 # background.
 # -----------------------------------------------------------------------
 _AI_MODELS_IN_PREFERENCE_ORDER = ["gpt-image-2", "gpt-image-1"]
-_AI_PROMPT_BY_MOTIF = {
-    "diya": "rows of glowing terracotta oil lamps (diyas) with warm golden flames, "
-            "scattered marigold petals, soft bokeh light",
-    "confetti": "a joyful burst of colourful confetti and paper streamers in the air",
-    "crescent_star": "a glowing golden crescent moon and star in a deep teal night sky, "
-                      "traditional geometric lantern patterns",
-    "rangoli": "an elaborate, colourful rangoli flower pattern on the ground with "
-               "marigolds and diyas",
-    "tricolor": "the Indian tricolour (saffron, white, green) as flowing fabric or "
-                "bunting, with the Ashoka Chakra motif, patriotic mood",
-    "bloom": "lush blooming lotus and marigold flowers with soft golden light",
-    "snow": "gentle falling snow, twinkling fairy lights and pine branches, a cosy "
-            "winter evening mood",
+
+# Several scene variants per motif (rather than one fixed scene) so festivals
+# that share a motif - "bloom" alone covers 16 of the 38 festivals - don't all
+# render near-identical art. A festival's own rng (seeded by its name, see
+# render_greeting_image) deterministically picks one variant + one
+# composition style, so the same festival looks the same across regenerates
+# but the calendar as a whole stays visually varied.
+_AI_SCENE_VARIANTS = {
+    "diya": [
+        "rows of glowing terracotta oil lamps (diyas) with warm golden flames, scattered "
+        "marigold petals and gold confetti, soft bokeh light",
+        "a festive doorway framed with diyas, marigold garlands and rangoli powder, warm "
+        "brass and copper accents",
+        "diyas floating on a dark reflective surface with marigold petals drifting around "
+        "them, warm fairy-light bokeh",
+    ],
+    "confetti": [
+        "a joyful burst of colourful confetti, paper streamers and balloons in the air",
+        "a shower of coloured powder mixing mid-air into a rainbow burst, playful energy",
+        "festive paper lanterns, streamers and sparklers against a night sky",
+    ],
+    "crescent_star": [
+        "a glowing golden crescent moon and star in a deep teal night sky, ornate geometric "
+        "lantern patterns",
+        "an arabesque-patterned arch with hanging lanterns, a crescent moon and twinkling "
+        "stars",
+        "a skyline silhouette under a crescent moon with strings of lanterns, jewel-toned sky",
+    ],
+    "rangoli": [
+        "an elaborate, colourful rangoli flower pattern on the ground with marigolds and "
+        "diyas",
+        "a pookalam-style flower carpet arranged in concentric rings of many colours",
+        "a rangoli powder pattern surrounded by scattered flower petals and small brass lamps",
+    ],
+    "tricolor": [
+        "the Indian tricolour as flowing fabric or bunting, with the Ashoka Chakra motif, "
+        "patriotic mood",
+        "kites and bunting in saffron, white and green against a bright open sky, patriotic "
+        "mood",
+        "marigold garlands in saffron and green with a subtle Ashoka Chakra emblem, "
+        "patriotic mood",
+    ],
+    "bloom": [
+        "a cluster of blooming lotus flowers and marigolds in warm gold and coral light",
+        "hibiscus and jasmine blossoms with a peacock feather motif, jewel tones of teal, "
+        "magenta and gold",
+        "banana leaves, marigold garlands and small brass diyas arranged like a festive "
+        "doorway",
+        "trailing jasmine vines, lotus blooms and oil lamps, dusk-toned pinks and ambers",
+        "a bouquet of marigolds, roses and mango leaves tied with red thread, warm festive "
+        "light",
+        "a peacock feather fan, lotus blossoms and gold-leaf detailing, rich jewel tones",
+    ],
+    "snow": [
+        "gentle falling snow, twinkling fairy lights and pine branches, a cosy winter "
+        "evening mood",
+        "a string of warm fairy lights wound through holly and pine, soft snowfall",
+        "ornaments, ribbon and pine branches on a deep evergreen background with soft snow",
+    ],
 }
 
+_COMPOSITION_STYLES = [
+    "asymmetric composition with the artwork flowing in from one side, leaving open, "
+    "airy space elsewhere",
+    "decorative elements arranged like a border or frame around the edges of the canvas",
+    "artwork scattered gently across the whole frame in a balanced, airy arrangement",
+    "artwork concentrated along a diagonal sweep from one corner toward the opposite side",
+]
 
-def _ai_background_prompt(festival: dict) -> str:
-    scene = _AI_PROMPT_BY_MOTIF.get(festival["motif"], _AI_PROMPT_BY_MOTIF["bloom"])
+
+def _ai_background_prompt(festival: dict, rng: random.Random) -> str:
+    variants = _AI_SCENE_VARIANTS.get(festival["motif"], _AI_SCENE_VARIANTS["bloom"])
+    scene = rng.choice(variants)
+    composition = rng.choice(_COMPOSITION_STYLES)
+    hexes = ", ".join(festival["palette"])
     return (
-        f"A vibrant, modern flat-illustration greeting-card background celebrating "
-        f"{festival['name']}, an Indian festival. Scene: {scene}. Warm, festive, "
-        f"joyful colour palette. Clean flat-illustration / vector-art style, rich "
-        f"colour gradients, no photorealism. Square composition, subject matter "
-        f"concentrated in the upper two-thirds, keeping the lower third calmer and "
-        f"less busy. Absolutely no text, no words, no letters, no logos, no "
-        f"watermarks, no human faces in close-up."
+        f"A premium, editorial-quality flat-illustration greeting-card background "
+        f"celebrating {festival['name']}, an Indian festival, for a business school's "
+        f"official audience of students, faculty, parents and corporate partners - warm "
+        f"and joyful but polished and professional, never childish or generic clip-art. "
+        f"Scene: {scene}. Composition: {composition}. Rich, varied colour palette built "
+        f"around these tones: {hexes}, plus complementary accents - avoid a flat "
+        f"single-hue wash; use at least 4-5 distinct hues with good contrast between "
+        f"them. Include several different decorative props and objects, not just one "
+        f"repeated element, rendered in a clean modern flat-illustration / vector-art "
+        f"style with rich gradients and soft depth and light, no photorealism. Square "
+        f"composition, gallery-worthy finish. Absolutely no text, no words, no letters, "
+        f"no logos, no watermarks, no human faces in close-up."
     )
 
 
@@ -105,12 +168,15 @@ def _call_openai_image_api(prompt: str) -> Optional[bytes]:
     return None
 
 
-async def generate_ai_background(festival: dict) -> Optional[Image.Image]:
+async def generate_ai_background(festival: dict, seed: Optional[int] = None) -> Optional[Image.Image]:
     """Best-effort: returns a 1080x1080 RGBA illustration for this festival, or
-    None if OPENAI_API_KEY isn't set or the call fails for any reason."""
+    None if OPENAI_API_KEY isn't set or the call fails for any reason. Uses the
+    same default seed formula as render_greeting_image so the two stay
+    correlated without the caller having to pass anything explicitly."""
     if not os.environ.get("OPENAI_API_KEY"):
         return None
-    raw = await asyncio.to_thread(_call_openai_image_api, _ai_background_prompt(festival))
+    rng = random.Random(seed if seed is not None else hash(festival["name"]) % 10_000)
+    raw = await asyncio.to_thread(_call_openai_image_api, _ai_background_prompt(festival, rng))
     if not raw:
         return None
     try:
@@ -246,6 +312,45 @@ FESTIVALS_2026 = [
 
 def _font(name: str, size: int):
     return ImageFont.truetype(os.path.join(FONT_DIR, f"{name}.ttf"), size)
+
+
+def _headline_font(style: str, size: int):
+    """style is 'serif' (Playfair Display, bold instance of the variable font)
+    or 'sans' (Poppins ExtraBold) - picked per-festival for typographic
+    variety across the calendar."""
+    if style == "serif":
+        f = ImageFont.truetype(os.path.join(FONT_DIR, "PlayfairDisplay-Variable.ttf"), size)
+        try:
+            f.set_variation_by_name("Bold")
+        except Exception:
+            pass
+        return f
+    return _font("Poppins-ExtraBold", size)
+
+
+def _tracked_width(draw, text: str, font, tracking: float) -> float:
+    if not text:
+        return 0
+    return sum(draw.textlength(ch, font=font) for ch in text) + tracking * max(len(text) - 1, 0)
+
+
+def _draw_tracked(draw, x: float, y: float, text: str, font, fill, tracking: float):
+    for ch in text:
+        draw.text((x, y), ch, font=font, fill=fill)
+        x += draw.textlength(ch, font=font) + tracking
+
+
+def _calmer_corner(img: Image.Image) -> str:
+    """Which top corner ('left' or 'right') has less visual complexity, so the
+    logo badge can sit somewhere that doesn't collide with the busiest part
+    of the illustration."""
+    w, h = img.size
+    bw, bh = int(w * 0.36), int(h * 0.30)
+    left = img.crop((0, 0, bw, bh)).convert("L")
+    right = img.crop((w - bw, 0, w, bh)).convert("L")
+    left_var = ImageStat.Stat(left).stddev[0]
+    right_var = ImageStat.Stat(right).stddev[0]
+    return "left" if left_var <= right_var else "right"
 
 
 def _hex2rgb(h: str):
@@ -467,29 +572,34 @@ def _wrap_text(draw, text, fnt, max_width):
     return lines
 
 
-def _fit_headline(draw, text, max_width, start_size=92, min_size=54):
+def _fit_headline(draw, text, max_width, style="sans", start_size=92, min_size=54):
     size = start_size
     while size >= min_size:
-        fnt = _font("Poppins-ExtraBold", size)
+        fnt = _headline_font(style, size)
         lines = _wrap_text(draw, text, fnt, max_width)
         if len(lines) <= 2:
             return fnt, lines, size
         size -= 6
-    fnt = _font("Poppins-ExtraBold", min_size)
+    fnt = _headline_font(style, min_size)
     return fnt, _wrap_text(draw, text, fnt, max_width), min_size
 
 
 def render_greeting_image(festival: dict, headline: str, subline: str = "From all of us at ISME Bangalore",
-                           seed: Optional[int] = None, ai_background: Optional[Image.Image] = None) -> bytes:
+                           tagline: str = "", seed: Optional[int] = None,
+                           ai_background: Optional[Image.Image] = None) -> bytes:
     """Festive greeting card, 1080x1080 PNG. If ai_background (a 1080x1080 RGBA
     illustration from generate_ai_background) is supplied, it's used as the
     scene and the local gradient/motif generator is skipped; the glass card,
-    headline text and ISME logo pill are always rendered locally either way."""
+    headline text and ISME logo badge are always rendered locally either way.
+    Layout/typography (headline font, card tint, which corner the logo sits
+    in) vary per-festival - deterministic per festival via the seeded rng, so
+    the calendar doesn't look like the same template with a new photo."""
     rng = random.Random(seed if seed is not None else hash(festival["name"]) % 10_000)
     palette = festival["palette"]
     motif = festival["motif"]
     luma = sum(_hex2rgb(palette[-1]))
     accent = palette[-1] if luma < 600 else palette[0]
+    headline_style = rng.choice(["sans", "serif"])
 
     if ai_background is not None:
         bg = ai_background.convert("RGBA")
@@ -513,47 +623,67 @@ def render_greeting_image(festival: dict, headline: str, subline: str = "From al
         motif_layer = _MOTIFS.get(motif, _motif_bloom)(motif_layer, rng, accent)
         bg.alpha_composite(motif_layer)
 
+    # --- ISME logo badge: compact, sits in whichever top corner of the
+    # artwork is visually calmer, instead of always the same bottom pill. ---
+    logo = Image.open(LOGO_PATH).convert("RGBA")
+    logo_w = 300
+    logo_h = int(logo_w / (logo.width / logo.height))
+    logo_small = logo.resize((logo_w, logo_h), Image.LANCZOS)
+    pill_pad_x, pill_pad_y = 26, 18
+    pill_w, pill_h = logo_w + pill_pad_x * 2, logo_h + pill_pad_y * 2
+    shadow_margin = 18
+    badge = Image.new("RGBA", (pill_w + shadow_margin * 2, pill_h + shadow_margin * 2), (0, 0, 0, 0))
+    bs = Image.new("RGBA", badge.size, (0, 0, 0, 0))
+    ImageDraw.Draw(bs).rounded_rectangle(
+        [shadow_margin, shadow_margin + 6, shadow_margin + pill_w, shadow_margin + pill_h + 6],
+        radius=pill_h // 2, fill=(0, 0, 0, 90))
+    badge.alpha_composite(bs.filter(ImageFilter.GaussianBlur(10)))
+    ImageDraw.Draw(badge).rounded_rectangle(
+        [shadow_margin, shadow_margin, shadow_margin + pill_w, shadow_margin + pill_h],
+        radius=pill_h // 2, fill=(255, 255, 255, 255))
+    badge.alpha_composite(logo_small, (shadow_margin + pill_pad_x, shadow_margin + pill_pad_y))
+    corner = _calmer_corner(bg)
+    corner_margin = 56
+    badge_x = corner_margin if corner == "left" else IMAGE_SIZE - badge.width - corner_margin
+    bg.alpha_composite(badge, (badge_x, corner_margin))
+
+    # --- Greeting card: anchored low (art gets the top of the frame), with a
+    # subtle one-line eyebrow above the headline and a per-festival tint/font
+    # so cards don't all read as the same template. ---
     tmp_draw = ImageDraw.Draw(bg)
     max_text_w = IMAGE_SIZE - 260
-    hd_font, head_lines, hsize = _fit_headline(tmp_draw, headline, max_text_w)
+    hd_font, head_lines, hsize = _fit_headline(tmp_draw, headline, max_text_w, style=headline_style)
     sub_font = _font("Poppins-Medium", 32)
+    eyebrow_font = _font("Poppins-Regular", 27)
+    eyebrow_text = tagline.strip().upper() if tagline else ""
+
     line_h = int(hsize * 1.12)
-    card_h = len(head_lines) * line_h + 84
+    inner_pad = 46
+    eyebrow_block_h = 48 if eyebrow_text else 0
+    sub_block_h = 54
+    card_h = inner_pad + eyebrow_block_h + len(head_lines) * line_h + sub_block_h + inner_pad - 24
     card_w = IMAGE_SIZE - 180
-    card, pad = _rounded_card_with_shadow((card_w, card_h), 40)
+
+    tint = tuple(int(255 * 0.9 + c * 0.1) for c in _hex2rgb(accent))
+    card, pad = _rounded_card_with_shadow((card_w, card_h), 40, fill=(*tint, 242))
     cx = (IMAGE_SIZE - card.width) // 2
-    cy = int(IMAGE_SIZE * 0.5) - card.height // 2
+    bottom_margin = 64
+    cy = IMAGE_SIZE - card.height - bottom_margin
     bg.alpha_composite(card, (cx, cy))
 
     d = ImageDraw.Draw(bg)
-    ty = cy + pad + 16
+    ty = cy + pad + inner_pad - 24
+    muted = tuple(int(c * 0.5 + 125 * 0.5) for c in _hex2rgb(accent))
+    if eyebrow_text:
+        ew = _tracked_width(d, eyebrow_text, eyebrow_font, tracking=3)
+        _draw_tracked(d, (IMAGE_SIZE - ew) / 2, ty, eyebrow_text, eyebrow_font, (*muted, 235), tracking=3)
+        ty += eyebrow_block_h
     for line in head_lines:
         tw = d.textlength(line, font=hd_font)
         d.text(((IMAGE_SIZE - tw) / 2, ty), line, font=hd_font, fill=(28, 22, 18, 255))
         ty += line_h
     tw = d.textlength(subline, font=sub_font)
-    d.text(((IMAGE_SIZE - tw) / 2, ty + 6), subline, font=sub_font, fill=(*_hex2rgb(accent), 255))
-
-    # Full ISME wordmark (globe + "ISME Bangalore" + "Celebrating 20 Years") in a
-    # white pill, bottom-center - wide aspect ratio, so a circular badge doesn't fit.
-    logo = Image.open(LOGO_PATH).convert("RGBA")
-    logo_w = 460
-    logo_h = int(logo_w / (logo.width / logo.height))
-    logo_small = logo.resize((logo_w, logo_h), Image.LANCZOS)
-    pill_pad_x, pill_pad_y = 36, 22
-    pill_w, pill_h = logo_w + pill_pad_x * 2, logo_h + pill_pad_y * 2
-    shadow_margin = 20
-    badge = Image.new("RGBA", (pill_w + shadow_margin * 2, pill_h + shadow_margin * 2), (0, 0, 0, 0))
-    bs = Image.new("RGBA", badge.size, (0, 0, 0, 0))
-    ImageDraw.Draw(bs).rounded_rectangle(
-        [shadow_margin, shadow_margin + 8, shadow_margin + pill_w, shadow_margin + pill_h + 8],
-        radius=pill_h // 2, fill=(0, 0, 0, 90))
-    badge.alpha_composite(bs.filter(ImageFilter.GaussianBlur(12)))
-    ImageDraw.Draw(badge).rounded_rectangle(
-        [shadow_margin, shadow_margin, shadow_margin + pill_w, shadow_margin + pill_h],
-        radius=pill_h // 2, fill=(255, 255, 255, 255))
-    badge.alpha_composite(logo_small, (shadow_margin + pill_pad_x, shadow_margin + pill_pad_y))
-    bg.alpha_composite(badge, ((IMAGE_SIZE - badge.width) // 2, IMAGE_SIZE - badge.height - 40))
+    d.text(((IMAGE_SIZE - tw) / 2, ty + 10), subline, font=sub_font, fill=(*_hex2rgb(accent), 255))
 
     out = BytesIO()
     bg.convert("RGB").save(out, format="PNG", optimize=True)
@@ -568,28 +698,46 @@ You write in ISME's voice: warm, direct, never generic corporate filler.
 
 Input: a festival's name and a one-line description of what it marks.
 
-Write ONE short WhatsApp broadcast message (2-4 sentences, under 300
-characters) wishing the ISME Bangalore community well for the festival. It
-should:
-- Name the festival naturally (don't just repeat the input verbatim).
-- Feel warm and specific to a management-school community, not a generic
-  mass-market greeting - a brief, genuine touch is fine (e.g. tying it to
-  togetherness, new beginnings, gratitude) but do not force a business/
-  career angle onto every festival - a wish that just wishes well is fine.
-- Use at most one emoji, only if it fits naturally.
-- Not invent any claim, statistic, or event ISME is hosting.
+Write TWO things:
 
-Return: whatsapp_message (the text, ready to send as-is)."""
+1. whatsapp_message: ONE short WhatsApp broadcast message (2-4 sentences,
+   under 300 characters) wishing the ISME Bangalore community well for the
+   festival. It should:
+   - Name the festival naturally (don't just repeat the input verbatim).
+   - Feel warm and specific to a management-school community, not a generic
+     mass-market greeting - a brief, genuine touch is fine (e.g. tying it to
+     togetherness, new beginnings, gratitude) but do not force a business/
+     career angle onto every festival - a wish that just wishes well is fine.
+   - Use at most one emoji, only if it fits naturally.
+   - Not invent any claim, statistic, or event ISME is hosting.
+
+2. tagline: a short one-liner (3-7 words, no ending punctuation) that will
+   sit as a small, understated line ABOVE the big "Happy <Festival>!"
+   headline on the greeting image. It must:
+   - Say something different from the headline, not restate the festival
+     name - a feeling, a wish, or what the day represents (e.g. "Light over
+     darkness, always", "A season of new beginnings", "Gratitude for those
+     who teach us").
+   - Read as quiet and warm, not a shout - this is the subtle line, not the
+     headline.
+   - Go out to channel partners, students, parents and teachers alike, so
+     keep it dignified and inclusive, not casual slang.
+
+This greeting is seen by channel partners, students, parents and teachers,
+so both pieces of text should feel considered, not templated."""
 
 GREETING_SCHEMA = {
     "type": "object",
-    "properties": {"whatsapp_message": {"type": "string"}},
-    "required": ["whatsapp_message"],
+    "properties": {
+        "whatsapp_message": {"type": "string"},
+        "tagline": {"type": "string"},
+    },
+    "required": ["whatsapp_message", "tagline"],
     "additionalProperties": False,
 }
 
 
-async def run_greeting_text_agent(festival: dict) -> str:
+async def run_greeting_text_agent(festival: dict) -> dict:
     client = agents.get_client()
     user = f"Festival: {festival['name']}\nWhat it marks: {festival['blurb']}"
     response = await agents._create(
@@ -600,4 +748,4 @@ async def run_greeting_text_agent(festival: dict) -> str:
         max_tokens=4000,
     )
     data = agents.extract_json_object(agents._first_text(response))
-    return data["whatsapp_message"]
+    return {"whatsapp_message": data["whatsapp_message"], "tagline": data["tagline"]}
