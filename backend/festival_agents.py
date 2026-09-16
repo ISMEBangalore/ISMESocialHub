@@ -20,7 +20,7 @@ import newsletter_agents as agents
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(ROOT_DIR, "assets", "fonts")
-LOGO_PATH = os.path.join(ROOT_DIR, "..", "frontend", "public", "isme-logo.png")
+LOGO_PATH = os.path.join(ROOT_DIR, "assets", "images", "isme-logo.png")
 IMAGE_SIZE = 1080
 
 # -----------------------------------------------------------------------
