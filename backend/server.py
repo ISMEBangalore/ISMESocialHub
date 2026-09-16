@@ -979,7 +979,8 @@ async def run_festival_greeting(run_id: str, festival: dict):
         await update({"status": "generating"})
         message = await fest_agents.run_greeting_text_agent(festival)
         headline = f"Happy {festival['name']}!"
-        image_bytes = await asyncio.to_thread(fest_agents.render_greeting_image, festival, headline)
+        ai_background = await fest_agents.generate_ai_background(festival)
+        image_bytes = await asyncio.to_thread(fest_agents.render_greeting_image, festival, headline, ai_background=ai_background)
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
         await update({"status": "ready_for_review", "headline": headline, "message": message, "image_base64": image_b64})
     except Exception as e:

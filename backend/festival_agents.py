@@ -8,9 +8,15 @@ Two independent pieces:
   a glass "sticker" card with the greeting, and the ISME logo composited
   into a branded corner badge. Deterministic and free to regenerate.
 """
+import asyncio
+import base64
+import json
+import logging
 import math
 import os
 import random
+import urllib.error
+import urllib.request
 from io import BytesIO
 from typing import Optional
 
@@ -18,10 +24,95 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 import newsletter_agents as agents
 
+logger = logging.getLogger(__name__)
+
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(ROOT_DIR, "assets", "fonts")
 LOGO_PATH = os.path.join(ROOT_DIR, "assets", "images", "isme-logo.png")
 IMAGE_SIZE = 1080
+
+# -----------------------------------------------------------------------
+# AI-generated illustrated background (optional). If OPENAI_API_KEY is set,
+# each greeting gets a real illustrated festive scene from DALL-E instead of
+# the geometric gradient+motif fallback below. The greeting card and ISME
+# logo pill are still composited locally on top either way, so branding and
+# text stay crisp and identical regardless of which background was used.
+# Fully optional and fails soft: any error (no key, quota, network, content
+# policy) just falls back to the deterministic Pillow background.
+# -----------------------------------------------------------------------
+_AI_PROMPT_BY_MOTIF = {
+    "diya": "rows of glowing terracotta oil lamps (diyas) with warm golden flames, "
+            "scattered marigold petals, soft bokeh light",
+    "confetti": "a joyful burst of colourful confetti and paper streamers in the air",
+    "crescent_star": "a glowing golden crescent moon and star in a deep teal night sky, "
+                      "traditional geometric lantern patterns",
+    "rangoli": "an elaborate, colourful rangoli flower pattern on the ground with "
+               "marigolds and diyas",
+    "tricolor": "the Indian tricolour (saffron, white, green) as flowing fabric or "
+                "bunting, with the Ashoka Chakra motif, patriotic mood",
+    "bloom": "lush blooming lotus and marigold flowers with soft golden light",
+    "snow": "gentle falling snow, twinkling fairy lights and pine branches, a cosy "
+            "winter evening mood",
+}
+
+
+def _ai_background_prompt(festival: dict) -> str:
+    scene = _AI_PROMPT_BY_MOTIF.get(festival["motif"], _AI_PROMPT_BY_MOTIF["bloom"])
+    return (
+        f"A vibrant, modern flat-illustration greeting-card background celebrating "
+        f"{festival['name']}, an Indian festival. Scene: {scene}. Warm, festive, "
+        f"joyful colour palette. Clean flat-illustration / vector-art style, rich "
+        f"colour gradients, no photorealism. Square composition, subject matter "
+        f"concentrated in the upper two-thirds, keeping the lower third calmer and "
+        f"less busy. Absolutely no text, no words, no letters, no logos, no "
+        f"watermarks, no human faces in close-up."
+    )
+
+
+def _call_openai_image_api(prompt: str) -> Optional[bytes]:
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
+        return None
+    url = "https://api.openai.com/v1/images/generations"
+    payload = json.dumps({
+        "model": "dall-e-3",
+        "prompt": prompt,
+        "n": 1,
+        "size": "1024x1024",
+        "quality": "standard",
+        "style": "vivid",
+        "response_format": "b64_json",
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=payload, method="POST",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return base64.b64decode(data["data"][0]["b64_json"])
+    except urllib.error.HTTPError as e:
+        logger.warning(f"[AI BACKGROUND] OpenAI HTTP error {e.code}: {e.read().decode('utf-8', 'ignore')}")
+        return None
+    except Exception as e:
+        logger.warning(f"[AI BACKGROUND] OpenAI image call failed: {e}")
+        return None
+
+
+async def generate_ai_background(festival: dict) -> Optional[Image.Image]:
+    """Best-effort: returns a 1080x1080 RGBA illustration for this festival, or
+    None if OPENAI_API_KEY isn't set or the call fails for any reason."""
+    if not os.environ.get("OPENAI_API_KEY"):
+        return None
+    raw = await asyncio.to_thread(_call_openai_image_api, _ai_background_prompt(festival))
+    if not raw:
+        return None
+    try:
+        img = Image.open(BytesIO(raw)).convert("RGBA")
+        return img.resize((IMAGE_SIZE, IMAGE_SIZE), Image.LANCZOS)
+    except Exception as e:
+        logger.warning(f"[AI BACKGROUND] decode failed: {e}")
+        return None
 
 # -----------------------------------------------------------------------
 # Festival calendar (2026) - name, date, category, one-line blurb, and the
@@ -382,22 +473,39 @@ def _fit_headline(draw, text, max_width, start_size=92, min_size=54):
     return fnt, _wrap_text(draw, text, fnt, max_width), min_size
 
 
-def render_greeting_image(festival: dict, headline: str, subline: str = "From all of us at ISME Bangalore", seed: Optional[int] = None) -> bytes:
-    """Pure-Python (no model call) festive greeting card, 1080x1080 PNG."""
+def render_greeting_image(festival: dict, headline: str, subline: str = "From all of us at ISME Bangalore",
+                           seed: Optional[int] = None, ai_background: Optional[Image.Image] = None) -> bytes:
+    """Festive greeting card, 1080x1080 PNG. If ai_background (a 1080x1080 RGBA
+    illustration from generate_ai_background) is supplied, it's used as the
+    scene and the local gradient/motif generator is skipped; the glass card,
+    headline text and ISME logo pill are always rendered locally either way."""
     rng = random.Random(seed if seed is not None else hash(festival["name"]) % 10_000)
     palette = festival["palette"]
     motif = festival["motif"]
-
-    bg = _diagonal_gradient((IMAGE_SIZE, IMAGE_SIZE), palette).convert("RGBA")
     luma = sum(_hex2rgb(palette[-1]))
     accent = palette[-1] if luma < 600 else palette[0]
 
-    bg.alpha_composite(_blob_glow((IMAGE_SIZE, IMAGE_SIZE), (IMAGE_SIZE * 0.08, IMAGE_SIZE * 0.06), 340, _hex2rgb(palette[-1])))
-    bg.alpha_composite(_blob_glow((IMAGE_SIZE, IMAGE_SIZE), (IMAGE_SIZE * 0.95, IMAGE_SIZE * 0.98), 380, _hex2rgb(palette[0]), alpha=90))
-
-    motif_layer = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE), (0, 0, 0, 0))
-    motif_layer = _MOTIFS.get(motif, _motif_bloom)(motif_layer, rng, accent)
-    bg.alpha_composite(motif_layer)
+    if ai_background is not None:
+        bg = ai_background.convert("RGBA")
+        if bg.size != (IMAGE_SIZE, IMAGE_SIZE):
+            bg = bg.resize((IMAGE_SIZE, IMAGE_SIZE), Image.LANCZOS)
+        # Gentle bottom-up darkening so the white card/logo pill keep contrast
+        # against whatever the illustration put behind them.
+        shade = Image.new("L", (IMAGE_SIZE, IMAGE_SIZE), 0)
+        sd = ImageDraw.Draw(shade)
+        for y in range(IMAGE_SIZE):
+            t = max(0.0, (y - IMAGE_SIZE * 0.42) / (IMAGE_SIZE * 0.58))
+            sd.line([(0, y), (IMAGE_SIZE, y)], fill=int(60 * t))
+        overlay = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE), (10, 8, 6, 0))
+        overlay.putalpha(shade)
+        bg.alpha_composite(overlay)
+    else:
+        bg = _diagonal_gradient((IMAGE_SIZE, IMAGE_SIZE), palette).convert("RGBA")
+        bg.alpha_composite(_blob_glow((IMAGE_SIZE, IMAGE_SIZE), (IMAGE_SIZE * 0.08, IMAGE_SIZE * 0.06), 340, _hex2rgb(palette[-1])))
+        bg.alpha_composite(_blob_glow((IMAGE_SIZE, IMAGE_SIZE), (IMAGE_SIZE * 0.95, IMAGE_SIZE * 0.98), 380, _hex2rgb(palette[0]), alpha=90))
+        motif_layer = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE), (0, 0, 0, 0))
+        motif_layer = _MOTIFS.get(motif, _motif_bloom)(motif_layer, rng, accent)
+        bg.alpha_composite(motif_layer)
 
     tmp_draw = ImageDraw.Draw(bg)
     max_text_w = IMAGE_SIZE - 260
