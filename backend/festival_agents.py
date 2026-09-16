@@ -20,7 +20,7 @@ import newsletter_agents as agents
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(ROOT_DIR, "assets", "fonts")
-LOGO_PATH = os.path.join(ROOT_DIR, "..", "frontend", "public", "isme-mark.png")
+LOGO_PATH = os.path.join(ROOT_DIR, "..", "frontend", "public", "isme-logo.png")
 IMAGE_SIZE = 1080
 
 # -----------------------------------------------------------------------
@@ -223,7 +223,7 @@ def _motif_diya(layer, rng, accent):
     glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
     d = ImageDraw.Draw(layer, "RGBA")
-    for row_y, n, scale in [(h - 92, 7, 1.0), (68, 5, 0.7)]:
+    for row_y, n, scale in [(h * 0.70, 7, 1.0), (68, 5, 0.7)]:
         for i in range(n):
             x = w * (0.10 + i * 0.80 / max(n - 1, 1)) + rng.uniform(-14, 14)
             y = row_y + rng.uniform(-14, 10)
@@ -276,7 +276,7 @@ def _motif_crescent_star(layer, rng, accent):
     n = 12
     for i in range(n):
         x = w * (i + 0.5) / n
-        y = h - 46
+        y = h * 0.72
         s = 16
         d.polygon([(x, y - s), (x + s, y), (x, y + s), (x - s, y)], fill=(*_hex2rgb(accent), 90))
     return layer
@@ -286,7 +286,7 @@ def _motif_rangoli(layer, rng, accent):
     w, h = layer.size
     d = ImageDraw.Draw(layer, "RGBA")
     palette = ["#FF6B6B", "#FFD93D", "#4ECDC4", "#FF922B", "#F783AC", "#63E6BE"]
-    for (cx, cy, scale) in [(w * 0.5, h - 30, 1.0), (w * 0.14, h * 0.16, 0.5), (w * 0.88, h * 0.14, 0.45)]:
+    for (cx, cy, scale) in [(w * 0.5, h * 0.72, 0.75), (w * 0.14, h * 0.16, 0.5), (w * 0.88, h * 0.14, 0.45)]:
         for ring, radius in enumerate([260, 210, 160, 110, 60]):
             radius *= scale
             n = max(int((14 - ring * 2) * scale + 4), 6)
@@ -311,14 +311,14 @@ def _motif_tricolor(layer, rng, accent):
     d.rectangle([0, h - band_h * 3, w, h - band_h * 2], fill=(19, 136, 8, 255))
     d.rectangle([0, h - band_h * 2, w, h - band_h], fill=(255, 255, 255, 255))
     d.rectangle([0, h - band_h, w, h], fill=(255, 153, 51, 255))
-    cx, cy, r = w * 0.5, h * 0.74, 105
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(11, 39, 135, 255), width=8)
-    d.ellipse([cx - 12, cy - 12, cx + 12, cy + 12], fill=(11, 39, 135, 255))
+    cx, cy, r = w * 0.5, h * 0.685, 70
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(11, 39, 135, 255), width=6)
+    d.ellipse([cx - 9, cy - 9, cx + 9, cy + 9], fill=(11, 39, 135, 255))
     for i in range(24):
         ang = 2 * math.pi * i / 24
-        x1, y1 = cx + 14 * math.cos(ang), cy + 14 * math.sin(ang)
+        x1, y1 = cx + 10 * math.cos(ang), cy + 10 * math.sin(ang)
         x2, y2 = cx + r * math.cos(ang), cy + r * math.sin(ang)
-        d.line([x1, y1, x2, y2], fill=(11, 39, 135, 255), width=4)
+        d.line([x1, y1, x2, y2], fill=(11, 39, 135, 255), width=3)
     return layer
 
 
@@ -420,21 +420,26 @@ def render_greeting_image(festival: dict, headline: str, subline: str = "From al
     tw = d.textlength(subline, font=sub_font)
     d.text(((IMAGE_SIZE - tw) / 2, ty + 6), subline, font=sub_font, fill=(*_hex2rgb(accent), 255))
 
+    # Full ISME wordmark (globe + "ISME Bangalore" + "Celebrating 20 Years") in a
+    # white pill, bottom-center - wide aspect ratio, so a circular badge doesn't fit.
     logo = Image.open(LOGO_PATH).convert("RGBA")
-    badge_d = 150
-    lw = int(badge_d * 0.62)
-    lh = int(lw / (logo.width / logo.height))
-    logo_small = logo.resize((lw, lh), Image.LANCZOS)
-    badge = Image.new("RGBA", (badge_d + 30, badge_d + 30), (0, 0, 0, 0))
+    logo_w = 460
+    logo_h = int(logo_w / (logo.width / logo.height))
+    logo_small = logo.resize((logo_w, logo_h), Image.LANCZOS)
+    pill_pad_x, pill_pad_y = 36, 22
+    pill_w, pill_h = logo_w + pill_pad_x * 2, logo_h + pill_pad_y * 2
+    shadow_margin = 20
+    badge = Image.new("RGBA", (pill_w + shadow_margin * 2, pill_h + shadow_margin * 2), (0, 0, 0, 0))
     bs = Image.new("RGBA", badge.size, (0, 0, 0, 0))
-    ImageDraw.Draw(bs).ellipse([15, 15 + 8, 15 + badge_d, 15 + badge_d + 8], fill=(0, 0, 0, 90))
-    badge.alpha_composite(bs.filter(ImageFilter.GaussianBlur(10)))
-    ImageDraw.Draw(badge).ellipse([15, 15, 15 + badge_d, 15 + badge_d], fill=(255, 255, 255, 255))
-    badge.alpha_composite(logo_small, (15 + (badge_d - lw) // 2, 15 + (badge_d - lh) // 2))
-    bg.alpha_composite(badge, (IMAGE_SIZE - badge.width - 44, IMAGE_SIZE - badge.height - 44))
-
-    wm_font = _font("Poppins-SemiBold", 30)
-    d.text((44, IMAGE_SIZE - 70), "ISME Bangalore", font=wm_font, fill=(255, 255, 255, 245))
+    ImageDraw.Draw(bs).rounded_rectangle(
+        [shadow_margin, shadow_margin + 8, shadow_margin + pill_w, shadow_margin + pill_h + 8],
+        radius=pill_h // 2, fill=(0, 0, 0, 90))
+    badge.alpha_composite(bs.filter(ImageFilter.GaussianBlur(12)))
+    ImageDraw.Draw(badge).rounded_rectangle(
+        [shadow_margin, shadow_margin, shadow_margin + pill_w, shadow_margin + pill_h],
+        radius=pill_h // 2, fill=(255, 255, 255, 255))
+    badge.alpha_composite(logo_small, (shadow_margin + pill_pad_x, shadow_margin + pill_pad_y))
+    bg.alpha_composite(badge, ((IMAGE_SIZE - badge.width) // 2, IMAGE_SIZE - badge.height - 40))
 
     out = BytesIO()
     bg.convert("RGB").save(out, format="PNG", optimize=True)
