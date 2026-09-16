@@ -73,7 +73,9 @@ export default function Festivities() {
 
   const saveEdits = async () => {
     try {
-      const r = await api.put(`/admin/festivals/greetings/${active.id}`, { headline: active.headline, message: active.message });
+      const r = await api.put(`/admin/festivals/greetings/${active.id}`, {
+        headline: active.headline, message: active.message, tagline: active.tagline || "",
+      });
       setActive(r.data);
     } catch (err) { toast.error(formatApiError(err)); }
   };
@@ -177,11 +179,18 @@ export default function Festivities() {
                   </div>
 
                   <div>
+                    <label className="text-xs font-bold text-neutral-500">Tagline (subtle line above the headline, on the image)</label>
+                    <Input data-testid="greeting-tagline" value={active.tagline || ""} disabled={!editable}
+                      onChange={(e) => setActive({ ...active, tagline: e.target.value })}
+                      className="border-2 border-black rounded-lg mt-1" />
+                  </div>
+
+                  <div>
                     <label className="text-xs font-bold text-neutral-500">Headline (on the image)</label>
                     <Input data-testid="greeting-headline" value={active.headline || ""} disabled={!editable}
                       onChange={(e) => setActive({ ...active, headline: e.target.value })}
                       className="border-2 border-black rounded-lg mt-1" />
-                    <p className="text-xs text-neutral-400 mt-1">Editing this only updates the text below — regenerate to bake a new headline into the image itself.</p>
+                    <p className="text-xs text-neutral-400 mt-1">Editing the tagline or headline only updates the text fields — regenerate to bake new text into the image itself.</p>
                   </div>
 
                   <div>

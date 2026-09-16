@@ -258,6 +258,7 @@ class FestivalIn(BaseModel):
 class FestivalGreetingEdit(BaseModel):
     headline: str
     message: str
+    tagline: str = ""
 
 class FestivalGreetingReject(BaseModel):
     reason: str = ""
@@ -977,12 +978,17 @@ async def run_festival_greeting(run_id: str, festival: dict):
 
     try:
         await update({"status": "generating"})
-        message = await fest_agents.run_greeting_text_agent(festival)
+        text = await fest_agents.run_greeting_text_agent(festival)
+        message, tagline = text["whatsapp_message"], text["tagline"]
         headline = f"Happy {festival['name']}!"
         ai_background = await fest_agents.generate_ai_background(festival)
-        image_bytes = await asyncio.to_thread(fest_agents.render_greeting_image, festival, headline, ai_background=ai_background)
+        image_bytes = await asyncio.to_thread(
+            fest_agents.render_greeting_image, festival, headline, tagline=tagline, ai_background=ai_background)
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
-        await update({"status": "ready_for_review", "headline": headline, "message": message, "image_base64": image_b64})
+        await update({
+            "status": "ready_for_review", "headline": headline, "message": message,
+            "tagline": tagline, "image_base64": image_b64,
+        })
     except Exception as e:
         logger.error(f"[FESTIVAL GREETING FAILED] run_id={run_id} err={e}")
         await update({"status": "failed", "error": str(e)})
@@ -1001,6 +1007,7 @@ async def create_festival_greeting(festival_id: str, admin: dict = Depends(requi
         "status": "generating",
         "headline": None,
         "message": None,
+        "tagline": None,
         "image_base64": None,
         "error": None,
         "triggered_by": admin["email"],
@@ -1038,7 +1045,7 @@ async def edit_festival_greeting(run_id: str, payload: FestivalGreetingEdit, adm
         raise HTTPException(404, "Greeting run not found")
     if run.get("status") != "ready_for_review":
         raise HTTPException(400, "Can only edit while ready for review")
-    update = {"headline": payload.headline, "message": payload.message, "updated_at": now_iso()}
+    update = {"headline": payload.headline, "message": payload.message, "tagline": payload.tagline, "updated_at": now_iso()}
     await db.festival_greetings.update_one({"id": run_id}, {"$set": update})
     doc = await db.festival_greetings.find_one({"id": run_id}, {"_id": 0, "image_base64": 0})
     return doc
