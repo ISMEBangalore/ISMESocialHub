@@ -15,6 +15,7 @@ import Clubs from "@/pages/Clubs";
 import CalendarPage from "@/pages/CalendarPage";
 import NewsletterPipeline from "@/pages/NewsletterPipeline";
 import NewsletterView from "@/pages/NewsletterView";
+import Festivities from "@/pages/Festivities";
 import { isAdminRole } from "@/lib/roles";
 import "@/App.css";
 
@@ -43,6 +44,7 @@ function App() {
             <Route path="/events" element={<Clubs type="event" />} />
             <Route path="/houses" element={<Clubs type="house" />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/festivities" element={<Festivities />} />
             <Route path="/newsletter/:runId" element={<NewsletterView />} />
             <Route path="/feed" element={
               <ProtectedRoute><Feed /></ProtectedRoute>

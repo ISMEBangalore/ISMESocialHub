@@ -6,6 +6,7 @@ load_dotenv(ROOT_DIR / ".env")
 import os
 import uuid
 import html
+import base64
 import logging
 import asyncio
 import secrets
@@ -20,6 +21,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
 import newsletter_agents as agents
+import festival_agents as fest_agents
 
 # Optional Resend import
 try:
@@ -37,6 +39,7 @@ JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+BACKEND_PUBLIC_URL = os.environ.get("BACKEND_PUBLIC_URL", "http://localhost:8000")
 SEED_ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get("SEED_ADMIN_EMAILS", "").split(",") if e.strip()]
 SEED_COADMIN_EMAILS = [e.strip().lower() for e in os.environ.get("SEED_COADMIN_EMAILS", "").split(",") if e.strip()]
 ADMIN_ROLES = ("admin", "co_admin")
@@ -244,6 +247,21 @@ class NewsletterContentEdit(BaseModel):
 class NewsletterReject(BaseModel):
     reason: str = ""
 
+class FestivalIn(BaseModel):
+    name: str
+    date: str  # ISO date string, "YYYY-MM-DD"
+    category: Literal["national", "hindu", "muslim", "sikh", "christian", "jain", "buddhist"] = "national"
+    blurb: str = ""
+    motif: Literal["diya", "confetti", "crescent_star", "rangoli", "tricolor", "bloom", "snow"] = "bloom"
+    palette: List[str] = Field(default_factory=lambda: ["#1B4F9C", "#2E7BC4", "#F2F2F2", "#1B8A4A"])
+
+class FestivalGreetingEdit(BaseModel):
+    headline: str
+    message: str
+
+class FestivalGreetingReject(BaseModel):
+    reason: str = ""
+
 # -----------------------
 # Startup
 # -----------------------
@@ -254,6 +272,18 @@ async def startup():
     await db.password_reset_tokens.create_index("token", unique=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.newsletter_runs.create_index("created_at")
+    await db.festivals.create_index("date")
+    await db.festival_greetings.create_index("created_at")
+    # Seed the 2026 Indian festival calendar (idempotent - keyed on name+date)
+    for fest in fest_agents.FESTIVALS_2026:
+        existing = await db.festivals.find_one({"name": fest["name"], "date": fest["date"]})
+        if not existing:
+            await db.festivals.insert_one({
+                **fest,
+                "id": str(uuid.uuid4()),
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
+            })
     # Seed admin / co-admin accounts (unclaimed - no password_hash)
     for email, role in [(e, "admin") for e in SEED_ADMIN_EMAILS] + [(e, "co_admin") for e in SEED_COADMIN_EMAILS]:
         existing = await db.users.find_one({"email": email})
@@ -904,6 +934,162 @@ async def get_public_newsletter(run_id: str):
         raise HTTPException(404, "Newsletter not found")
     content = doc.get("content") or {}
     return {**content, "sent_at": doc.get("sent_at")}
+
+# -----------------------
+# Festivities
+# -----------------------
+@api.get("/festivals")
+async def list_festivals():
+    docs = await db.festivals.find({}, {"_id": 0}).sort("date", 1).to_list(500)
+    return docs
+
+@api.post("/admin/festivals")
+async def create_festival(payload: FestivalIn, admin: dict = Depends(require_admin)):
+    doc = payload.model_dump()
+    doc["id"] = str(uuid.uuid4())
+    doc["created_at"] = now_iso()
+    doc["updated_at"] = now_iso()
+    await db.festivals.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@api.put("/admin/festivals/{festival_id}")
+async def update_festival(festival_id: str, payload: FestivalIn, admin: dict = Depends(require_admin)):
+    update = payload.model_dump()
+    update["updated_at"] = now_iso()
+    result = await db.festivals.update_one({"id": festival_id}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Festival not found")
+    doc = await db.festivals.find_one({"id": festival_id}, {"_id": 0})
+    return doc
+
+@api.delete("/admin/festivals/{festival_id}")
+async def delete_festival(festival_id: str, admin: dict = Depends(require_admin)):
+    result = await db.festivals.delete_one({"id": festival_id})
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Festival not found")
+    return {"deleted": True}
+
+async def run_festival_greeting(run_id: str, festival: dict):
+    async def update(fields: dict):
+        fields["updated_at"] = now_iso()
+        await db.festival_greetings.update_one({"id": run_id}, {"$set": fields})
+
+    try:
+        await update({"status": "generating"})
+        message = await fest_agents.run_greeting_text_agent(festival)
+        headline = f"Happy {festival['name']}!"
+        image_bytes = await asyncio.to_thread(fest_agents.render_greeting_image, festival, headline)
+        image_b64 = base64.b64encode(image_bytes).decode("ascii")
+        await update({"status": "ready_for_review", "headline": headline, "message": message, "image_base64": image_b64})
+    except Exception as e:
+        logger.error(f"[FESTIVAL GREETING FAILED] run_id={run_id} err={e}")
+        await update({"status": "failed", "error": str(e)})
+
+@api.post("/admin/festivals/{festival_id}/greeting")
+async def create_festival_greeting(festival_id: str, admin: dict = Depends(require_admin)):
+    festival = await db.festivals.find_one({"id": festival_id}, {"_id": 0})
+    if not festival:
+        raise HTTPException(404, "Festival not found")
+    run_id = str(uuid.uuid4())
+    doc = {
+        "id": run_id,
+        "festival_id": festival_id,
+        "festival_name": festival["name"],
+        "festival_date": festival["date"],
+        "status": "generating",
+        "headline": None,
+        "message": None,
+        "image_base64": None,
+        "error": None,
+        "triggered_by": admin["email"],
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+        "approved_by": None,
+        "approved_at": None,
+        "rejected_by": None,
+        "rejected_at": None,
+        "rejection_reason": None,
+        "sent_at": None,
+        "send_results": None,
+    }
+    await db.festival_greetings.insert_one(doc)
+    asyncio.create_task(run_festival_greeting(run_id, festival))
+    doc.pop("_id", None)
+    return doc
+
+@api.get("/admin/festivals/greetings")
+async def list_festival_greetings(admin: dict = Depends(require_admin)):
+    docs = await db.festival_greetings.find({}, {"_id": 0, "image_base64": 0}).sort("created_at", -1).to_list(200)
+    return docs
+
+@api.get("/admin/festivals/greetings/{run_id}")
+async def get_festival_greeting(run_id: str, admin: dict = Depends(require_admin)):
+    doc = await db.festival_greetings.find_one({"id": run_id}, {"_id": 0, "image_base64": 0})
+    if not doc:
+        raise HTTPException(404, "Greeting run not found")
+    return doc
+
+@api.put("/admin/festivals/greetings/{run_id}")
+async def edit_festival_greeting(run_id: str, payload: FestivalGreetingEdit, admin: dict = Depends(require_admin)):
+    run = await db.festival_greetings.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(404, "Greeting run not found")
+    if run.get("status") != "ready_for_review":
+        raise HTTPException(400, "Can only edit while ready for review")
+    update = {"headline": payload.headline, "message": payload.message, "updated_at": now_iso()}
+    await db.festival_greetings.update_one({"id": run_id}, {"$set": update})
+    doc = await db.festival_greetings.find_one({"id": run_id}, {"_id": 0, "image_base64": 0})
+    return doc
+
+@api.get("/festivals/greetings/{run_id}/image.png")
+async def get_festival_greeting_image(run_id: str):
+    doc = await db.festival_greetings.find_one({"id": run_id}, {"_id": 0, "image_base64": 1})
+    if not doc or not doc.get("image_base64"):
+        raise HTTPException(404, "Image not found")
+    image_bytes = base64.b64decode(doc["image_base64"])
+    return Response(content=image_bytes, media_type="image/png")
+
+@api.post("/admin/festivals/greetings/{run_id}/approve")
+async def approve_festival_greeting(run_id: str, admin: dict = Depends(require_admin)):
+    run = await db.festival_greetings.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(404, "Greeting run not found")
+    if run.get("status") != "ready_for_review":
+        raise HTTPException(400, "Run is not ready for review")
+
+    image_url = f"{BACKEND_PUBLIC_URL}/api/festivals/greetings/{run_id}/image.png"
+    whatsapp_result = await agents.send_whatsapp_image_broadcast(image_url, run.get("message", ""))
+
+    update = {
+        "status": "sent",
+        "approved_by": admin["email"],
+        "approved_at": now_iso(),
+        "sent_at": now_iso(),
+        "send_results": {"whatsapp": whatsapp_result},
+        "updated_at": now_iso(),
+    }
+    await db.festival_greetings.update_one({"id": run_id}, {"$set": update})
+    doc = await db.festival_greetings.find_one({"id": run_id}, {"_id": 0, "image_base64": 0})
+    return doc
+
+@api.post("/admin/festivals/greetings/{run_id}/reject")
+async def reject_festival_greeting(run_id: str, payload: FestivalGreetingReject, admin: dict = Depends(require_admin)):
+    run = await db.festival_greetings.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(404, "Greeting run not found")
+    if run.get("status") != "ready_for_review":
+        raise HTTPException(400, "Run is not ready for review")
+    update = {
+        "status": "rejected",
+        "rejected_by": admin["email"],
+        "rejected_at": now_iso(),
+        "rejection_reason": payload.reason,
+        "updated_at": now_iso(),
+    }
+    await db.festival_greetings.update_one({"id": run_id}, {"$set": update})
+    doc = await db.festival_greetings.find_one({"id": run_id}, {"_id": 0, "image_base64": 0})
+    return doc
 
 app.include_router(api)
 
