@@ -483,6 +483,14 @@ CORE PRINCIPLES
 reapplied across festivals (diyas and rangoli for Diwali; gulal clouds for Holi; crescent moon and lanterns for \
 Eid; pookalam for Onam; saffron/white/green with restrained national symbolism for Independence Day; and so on \
 for any other festival, observance or occasion named in the brief).
+- Where it is tasteful and adds richness rather than novelty for its own sake, weave in a secondary layer of \
+props/details that ties the traditional symbolism to ISME's own contemporary identity as an AI-forward business \
+school - e.g. for Ganesh Chaturthi, Ganesha (remover of obstacles) rendered alongside subtle, elegant motifs of \
+learning and innovation (an open book, a graduation cap, a soft circuit/network pattern, a glowing lightbulb) \
+so the piece reads as "this AI-era institution's Ganesh Chaturthi", not a generic festival stock image. This is \
+optional richness, never mandatory, and never at the expense of respectfulness - do not force a tech/AI layer \
+onto every occasion if it would feel gimmicky or trivialise the occasion (e.g. a solemn observance like Good \
+Friday or a remembrance day should stay dignified, no brand-trend layer).
 - Visual-first composition: the artwork/hero subject is 65-75% of the attention, greeting typography 20-30%, \
 branding 5-10%. The hero subject is never obscured by text.
 - NEVER plan a large text container: no white/opaque card, banner, floating panel, oversized rounded rectangle \
@@ -918,6 +926,22 @@ def _draw_tracked(draw, x: float, y: float, text: str, font, fill, tracking: flo
         x += draw.textlength(ch, font=font) + tracking
 
 
+def _draw_text_shadowed(draw, xy, text, font, fill, shadow=(8, 6, 4, 200), offset=(0, 3)):
+    """Draws a soft dark shadow copy first, then the text on top - a standard,
+    robust legibility technique for text over a photo/illustration whose
+    exact local colour/luminance can't be guaranteed, complementing (not
+    replacing) the scrim behind the whole block."""
+    x, y = xy
+    draw.text((x + offset[0], y + offset[1]), text, font=font, fill=shadow)
+    draw.text(xy, text, font=font, fill=fill)
+
+
+def _draw_tracked_shadowed(draw, x, y, text, font, fill, tracking, shadow=(8, 6, 4, 200), offset=(0, 3)):
+    for ch in text:
+        _draw_text_shadowed(draw, (x, y), ch, font, fill, shadow=shadow, offset=offset)
+        x += draw.textlength(ch, font=font) + tracking
+
+
 def _resolve_zone(placement: str) -> dict:
     """Maps a blueprint's free-text placement description (e.g. "left-center",
     "lower area", "upper-left third") to an anchor fraction of canvas
@@ -950,16 +974,25 @@ def _resolve_corner(placement: str) -> tuple:
     return h, v
 
 
-def _text_scrim(size: tuple, center: tuple, radius: float, max_alpha: int = 130) -> Image.Image:
+def _text_scrim(size: tuple, center: tuple, radius: float, max_alpha: int = 190) -> Image.Image:
     """A soft, edgeless radial darkening behind a text block - the spec's
     'restrained translucent treatment' for contrast, deliberately not a
     card/box: no defined edges, no uniform fill, just enough falloff that
-    text reads clearly over whatever the illustration put there."""
+    text reads clearly over whatever the illustration put there. Two-layer
+    (a smaller, denser core plus a wider, softer falloff) so the area
+    directly behind the glyphs is reliably dark even against a busy or
+    light AI-generated background, not just visually "assisted"."""
     layer = Image.new("RGBA", size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
     cx, cy = center
-    d.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=(10, 8, 6, max_alpha))
-    return layer.filter(ImageFilter.GaussianBlur(radius * 0.6))
+    core = Image.new("RGBA", size, (0, 0, 0, 0))
+    ImageDraw.Draw(core).ellipse([cx - radius * 0.65, cy - radius * 0.65, cx + radius * 0.65, cy + radius * 0.65],
+                                  fill=(8, 6, 5, max_alpha))
+    layer.alpha_composite(core.filter(ImageFilter.GaussianBlur(radius * 0.35)))
+    wide = Image.new("RGBA", size, (0, 0, 0, 0))
+    ImageDraw.Draw(wide).ellipse([cx - radius, cy - radius, cx + radius, cy + radius],
+                                  fill=(8, 6, 5, int(max_alpha * 0.55)))
+    layer.alpha_composite(wide.filter(ImageFilter.GaussianBlur(radius * 0.7)))
+    return layer
 
 
 def _calmer_corner(img: Image.Image) -> str:
@@ -1298,32 +1331,40 @@ def render_greeting_image(festival: dict, headline: str, subline: str = "From al
     text_top = max(40, min(text_top, H - block_h - 40))
 
     scrim_cx, scrim_cy = text_left + block_w / 2, text_top + block_h / 2
-    scrim_radius = max(block_w, block_h) * 0.75 + 60
+    scrim_radius = max(block_w, block_h) * 0.8 + 90
     bg.alpha_composite(_text_scrim((W, H), (scrim_cx, scrim_cy), scrim_radius))
 
     d = ImageDraw.Draw(bg)
     ty = text_top
-    light_text = (250, 248, 244, 255)
-    muted = tuple(int(c * 0.35 + 240 * 0.65) for c in _hex2rgb(accent))
+    # All greeting text uses one consistent high-contrast white scheme (not
+    # accent-tinted) plus a soft dark shadow on every draw - the scrim above
+    # only guarantees the *area* behind text is darker, not by how much
+    # everywhere within its soft falloff, so the shadow is a second,
+    # per-glyph line of defence against whatever the AI background actually
+    # put there.
+    headline_fill = (255, 255, 255, 255)
+    subline_fill = (255, 255, 255, 235)
+    eyebrow_fill = (255, 255, 255, 220)
+    shadow = (6, 5, 4, 215)
     if eyebrow_text:
         ew = _tracked_width(d, eyebrow_text, eyebrow_font, tracking=3)
         ex = text_left if zone["align"] != "center" else scrim_cx - ew / 2
         if zone["align"] == "right":
             ex = text_left + block_w - ew
-        _draw_tracked(d, ex, ty, eyebrow_text, eyebrow_font, (*muted, 235), tracking=3)
+        _draw_tracked_shadowed(d, ex, ty, eyebrow_text, eyebrow_font, eyebrow_fill, tracking=3, shadow=shadow)
         ty += eyebrow_block_h
     for line in head_lines:
         tw = d.textlength(line, font=hd_font)
         lx = text_left if zone["align"] != "center" else scrim_cx - tw / 2
         if zone["align"] == "right":
             lx = text_left + block_w - tw
-        d.text((lx, ty), line, font=hd_font, fill=light_text)
+        _draw_text_shadowed(d, (lx, ty), line, hd_font, headline_fill, shadow=shadow, offset=(0, 4))
         ty += line_h
     tw = d.textlength(subline, font=sub_font)
     slx = text_left if zone["align"] != "center" else scrim_cx - tw / 2
     if zone["align"] == "right":
         slx = text_left + block_w - tw
-    d.text((slx, ty + int(sub_font_size * 0.3)), subline, font=sub_font, fill=(*_hex2rgb(accent), 255))
+    _draw_text_shadowed(d, (slx, ty + int(sub_font_size * 0.3)), subline, sub_font, subline_fill, shadow=shadow, offset=(0, 2))
 
     out = BytesIO()
     bg.convert("RGB").save(out, format="PNG", optimize=True)

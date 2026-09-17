@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import StatusBadge, { CategoryPill } from "@/components/StatusBadge";
 import { toast } from "sonner";
 import { isAdminRole } from "@/lib/roles";
-import { PartyPopper, Sparkles, RefreshCw, MessageCircle } from "lucide-react";
+import { PartyPopper, Sparkles, RefreshCw, MessageCircle, Eye, Download } from "lucide-react";
 
 const RUNNING_STATUSES = ["generating"];
 
@@ -28,12 +28,22 @@ export default function Festivities() {
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState(null); // the greeting run being reviewed
   const [rejectReason, setRejectReason] = useState("");
+  const [latestByFestival, setLatestByFestival] = useState({}); // festival_id -> most recent saved run (no re-generation cost to view)
 
   const load = () => {
     setBusy(true);
     api.get("/festivals").then((r) => setFestivals(r.data)).catch((err) => toast.error(formatApiError(err))).finally(() => setBusy(false));
   };
+  const loadSavedGreetings = () => {
+    if (!isAdmin) return;
+    api.get("/admin/festivals/greetings").then((r) => {
+      const map = {};
+      for (const run of r.data) if (!map[run.festival_id]) map[run.festival_id] = run; // list is already newest-first
+      setLatestByFestival(map);
+    }).catch(() => {});
+  };
   useEffect(() => { load(); }, []);
+  useEffect(() => { loadSavedGreetings(); }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const grouped = useMemo(() => {
     const groups = [];
@@ -56,6 +66,7 @@ export default function Festivities() {
       try {
         const r = await api.get(`/admin/festivals/greetings/${active.id}`);
         setActive(r.data);
+        setLatestByFestival((m) => ({ ...m, [r.data.festival_id]: r.data }));
       } catch { /* keep polling silently */ }
     }, 2500);
     return () => clearInterval(t);
@@ -66,7 +77,27 @@ export default function Festivities() {
       const r = await api.post(`/admin/festivals/${festival.id}/greeting`);
       toast.success(`Generating a ${festival.name} greeting…`);
       setActive(r.data);
+      setLatestByFestival((m) => ({ ...m, [festival.id]: r.data }));
     } catch (err) { toast.error(formatApiError(err)); }
+  };
+
+  const viewSaved = (run) => setActive(run);
+
+  const downloadImage = async (run) => {
+    try {
+      const res = await fetch(`${API}/festivals/greetings/${run.id}/image.png`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ISME-${run.festival_name.replace(/\s+/g, "-")}-greeting.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Couldn't download the image — try opening it in a new tab instead.");
+    }
   };
 
   const editable = active?.status === "ready_for_review";
@@ -132,10 +163,17 @@ export default function Festivities() {
                       {f.blurb && <p className="text-sm text-neutral-500 mt-1">{f.blurb}</p>}
                     </div>
                     {isAdmin && (
-                      <Button size="sm" data-testid={`festival-generate-${f.id}`} onClick={() => generateGreeting(f)}
-                        className="shrink-0 bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-2 border-black rounded-full font-bold">
-                        <Sparkles className="w-4 h-4 mr-1" /> Generate greeting
-                      </Button>
+                      latestByFestival[f.id] ? (
+                        <Button size="sm" data-testid={`festival-view-${f.id}`} onClick={() => viewSaved(latestByFestival[f.id])}
+                          variant="outline" className="shrink-0 border-2 border-black rounded-full font-bold">
+                          <Eye className="w-4 h-4 mr-1" /> View saved
+                        </Button>
+                      ) : (
+                        <Button size="sm" data-testid={`festival-generate-${f.id}`} onClick={() => generateGreeting(f)}
+                          className="shrink-0 bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-2 border-black rounded-full font-bold">
+                          <Sparkles className="w-4 h-4 mr-1" /> Generate greeting
+                        </Button>
+                      )
                     )}
                   </div>
                 );
@@ -176,6 +214,20 @@ export default function Festivities() {
                 <div className="mt-6 space-y-4">
                   <div className="border-2 border-black rounded-xl overflow-hidden bg-neutral-100">
                     <img src={`${API}/festivals/greetings/${active.id}/image.png`} alt={active.festival_name} className="w-full" />
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" data-testid="greeting-download" onClick={() => downloadImage(active)}
+                      variant="outline" className="border-2 border-black rounded-full font-bold">
+                      <Download className="w-4 h-4 mr-1" /> Download image
+                    </Button>
+                    {active.status !== "generating" && (
+                      <Button type="button" data-testid="greeting-generate-new"
+                        onClick={() => generateGreeting({ id: active.festival_id, name: active.festival_name })}
+                        variant="outline" className="border-2 border-black rounded-full font-bold">
+                        <Sparkles className="w-4 h-4 mr-1" /> Generate new
+                      </Button>
+                    )}
                   </div>
 
                   <div>
