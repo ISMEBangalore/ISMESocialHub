@@ -971,7 +971,9 @@ async def delete_festival(festival_id: str, admin: dict = Depends(require_admin)
         raise HTTPException(404, "Festival not found")
     return {"deleted": True}
 
-async def run_festival_greeting(run_id: str, festival: dict):
+FestivalChannel = Literal["instagram_feed", "instagram_stories", "whatsapp_status", "whatsapp_chat"]
+
+async def run_festival_greeting(run_id: str, festival: dict, channel: FestivalChannel = "instagram_feed"):
     async def update(fields: dict):
         fields["updated_at"] = now_iso()
         await db.festival_greetings.update_one({"id": run_id}, {"$set": fields})
@@ -981,9 +983,10 @@ async def run_festival_greeting(run_id: str, festival: dict):
         text = await fest_agents.run_greeting_text_agent(festival)
         message, tagline = text["whatsapp_message"], text["tagline"]
         headline = f"Happy {festival['name']}!"
-        ai_background = await fest_agents.generate_ai_background(festival, greeting=text)
+        ai_background, blueprint = await fest_agents.generate_ai_background(festival, greeting=text, channel=channel)
         image_bytes = await asyncio.to_thread(
-            fest_agents.render_greeting_image, festival, headline, tagline=tagline, ai_background=ai_background)
+            fest_agents.render_greeting_image, festival, headline, tagline=tagline,
+            ai_background=ai_background, channel=channel, blueprint=blueprint)
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
         await update({
             "status": "ready_for_review", "headline": headline, "message": message,
@@ -994,7 +997,8 @@ async def run_festival_greeting(run_id: str, festival: dict):
         await update({"status": "failed", "error": str(e)})
 
 @api.post("/admin/festivals/{festival_id}/greeting")
-async def create_festival_greeting(festival_id: str, admin: dict = Depends(require_admin)):
+async def create_festival_greeting(festival_id: str, channel: FestivalChannel = "instagram_feed",
+                                    admin: dict = Depends(require_admin)):
     festival = await db.festivals.find_one({"id": festival_id}, {"_id": 0})
     if not festival:
         raise HTTPException(404, "Festival not found")
@@ -1004,6 +1008,7 @@ async def create_festival_greeting(festival_id: str, admin: dict = Depends(requi
         "festival_id": festival_id,
         "festival_name": festival["name"],
         "festival_date": festival["date"],
+        "channel": channel,
         "status": "generating",
         "headline": None,
         "message": None,
@@ -1022,7 +1027,7 @@ async def create_festival_greeting(festival_id: str, admin: dict = Depends(requi
         "send_results": None,
     }
     await db.festival_greetings.insert_one(doc)
-    asyncio.create_task(run_festival_greeting(run_id, festival))
+    asyncio.create_task(run_festival_greeting(run_id, festival, channel=channel))
     doc.pop("_id", None)
     return doc
 

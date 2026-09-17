@@ -3,11 +3,17 @@
 Two independent pieces:
 - A short Claude-written WhatsApp greeting message plus a subtle one-line
   image tagline (structured output, same pattern as newsletter_agents.py).
-- A greeting card image: an OpenAI GPT-image illustration for the scene
-  (falls back to a local Pillow gradient/motif if no key or the call fails),
-  with a corner ISME logo badge and a lower glass card (eyebrow + headline +
-  subline) composited locally on top either way, so branding and text stay
-  identical regardless of which background was used.
+- A greeting image: an OpenAI GPT-image illustration for the scene (falls
+  back to a local Pillow gradient/motif if no key or the call fails), sized
+  per channel (see FORMAT_SPECS - Instagram Feed/WhatsApp chat at 4:5,
+  Instagram Stories/WhatsApp Status at 9:16). The prompt sent to OpenAI is
+  produced by a structured Claude "blueprint" (concept/composition/
+  typography/logo placement - see run_greeting_blueprint_agent), which also
+  tells the local compositing pass WHERE to draw the greeting text and ISME
+  logo - directly on the artwork's own negative space with only a soft,
+  edgeless scrim behind for contrast, never an opaque card/banner (Sep 2026
+  art-direction spec). Branding and text stay crisp regardless of which
+  background was used.
 """
 import asyncio
 import base64
@@ -30,7 +36,38 @@ logger = logging.getLogger(__name__)
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(ROOT_DIR, "assets", "fonts")
 LOGO_PATH = os.path.join(ROOT_DIR, "assets", "images", "isme-logo.png")
-IMAGE_SIZE = 1080
+IMAGE_SIZE = 1080  # legacy square fallback, kept for any caller not specifying a channel
+
+# -----------------------------------------------------------------------
+# Per-channel output formats (Sep 2026 art-direction spec: 1:1 square is no
+# longer the default - each channel gets its own native aspect ratio,
+# generated directly rather than cropped from another ratio afterward).
+# openai_size is the closest size gpt-image-1/2 natively support
+# ("1024x1024" | "1024x1536" | "1536x1024"); we request the tallest native
+# portrait option for both portrait targets, then centre-crop to the exact
+# pixel dimensions in _cover_resize so neither format is a stretched crop of
+# the other.
+# -----------------------------------------------------------------------
+FORMAT_SPECS = {
+    "instagram_feed": {"ratio": "4:5", "width": 1080, "height": 1350, "openai_size": "1024x1536"},
+    "instagram_stories": {"ratio": "9:16", "width": 1080, "height": 1920, "openai_size": "1024x1536"},
+    "whatsapp_status": {"ratio": "9:16", "width": 1080, "height": 1920, "openai_size": "1024x1536"},
+    "whatsapp_chat": {"ratio": "4:5", "width": 1080, "height": 1350, "openai_size": "1024x1536"},
+}
+DEFAULT_CHANNEL = "instagram_feed"
+
+
+def _cover_resize(img: "Image.Image", target_w: int, target_h: int) -> "Image.Image":
+    """Scale img up/down to cover a target_w x target_h box, then centre-crop
+    the overflow - a standard 'cover' fit, so a portrait AI image can supply
+    any of our channel aspect ratios without ever stretching or letterboxing."""
+    src_w, src_h = img.size
+    scale = max(target_w / src_w, target_h / src_h)
+    new_w, new_h = round(src_w * scale), round(src_h * scale)
+    resized = img.resize((new_w, new_h), Image.LANCZOS)
+    left = (new_w - target_w) // 2
+    top = (new_h - target_h) // 2
+    return resized.crop((left, top, left + target_w, top + target_h))
 
 # -----------------------------------------------------------------------
 # AI-generated illustrated background (optional). If OPENAI_API_KEY is set,
@@ -418,7 +455,247 @@ async def run_image_prompt_agent(festival: dict, greeting: Optional[dict] = None
         return None
 
 
-def _call_openai_image_api(prompt: str) -> Optional[bytes]:
+# -----------------------------------------------------------------------
+# Claude agent - structured creative "blueprint" (Sep 2026 art-direction
+# spec, Section 10). Rather than one opaque prose prompt, this call returns
+# a small structured JSON object covering concept, composition, typography
+# and logo placement - so the calling application (not just the wording of
+# a prompt) owns and can validate the plan: build_prompt_from_blueprint()
+# then assembles the actual image-model prompt from it deterministically,
+# and render_greeting_image() reads the same blueprint to decide WHERE to
+# draw the locally-composited greeting text and logo, so the two stay in
+# sync instead of the text always landing in the same fixed spot.
+#
+# This is additive, not a replacement: if this call is unavailable or
+# fails, generate_ai_background() falls back to run_image_prompt_agent's
+# free-prose prompt, then to the local _ai_background_prompt template - the
+# same graceful degradation as before.
+# -----------------------------------------------------------------------
+BLUEPRINT_SYSTEM = """You are the creative director for ISME Bangalore's festive greeting artwork - a business \
+school's official greetings to students, faculty, parents and corporate partners across Instagram and WhatsApp.
+
+Given a festival/occasion brief, greeting copy and target channel, produce ONE structured creative blueprint \
+(not prose) for a premium, editorial, art-directed greeting visual.
+
+CORE PRINCIPLES
+
+- One clear central visual concept per occasion, culturally accurate and never a generic template mechanically \
+reapplied across festivals (diyas and rangoli for Diwali; gulal clouds for Holi; crescent moon and lanterns for \
+Eid; pookalam for Onam; saffron/white/green with restrained national symbolism for Independence Day; and so on \
+for any other festival, observance or occasion named in the brief).
+- Visual-first composition: the artwork/hero subject is 65-75% of the attention, greeting typography 20-30%, \
+branding 5-10%. The hero subject is never obscured by text.
+- NEVER plan a large text container: no white/opaque card, banner, floating panel, oversized rounded rectangle \
+or lower-third strip. Typography sits directly in genuine negative space the composition was designed to leave \
+open - describe WHERE that quiet space is (e.g. "left 35-40% of frame", "upper area above the hero", "lower-left \
+third"), not a box to draw there.
+- Place the hero subject off-centre when it helps the typography breathe (e.g. hero right 55-60% / greeting left \
+35-40%, or hero upper-middle / greeting in the naturally clean lower area).
+- Never place important text across a face, religious icon, or culturally significant detail.
+- Cinematic depth: foreground detail, hero subject, atmospheric background - realistic light, shadow, texture, \
+material, sophisticated colour grading. Avoid generic stock-photo or template (Canva-style) looks, excessive \
+symmetry, clip-art, or oversized headline text.
+- Vary style choice intelligently across festivals - editorial photography, premium 3D illustration, luxury \
+graphic design, paper-art, traditional Indian craft-inspired art, watercolour, modern minimalism, cinematic \
+still-life, architectural or botanical composition, tasteful mixed media - pick whichever best suits this \
+specific occasion, not the same style every time.
+- Brand-safe: no cheap clip-art, no crowded layout, no watermark, no fake/extra logos, no unrequested brand \
+names, no distorted objects, no political-party imagery. Do not portray identifiable real people unless asked; \
+symbolic representation is fine for commemorative occasions involving historical figures.
+- The greeting text height must stay within max_height_pct of total canvas height, 20 at the absolute most - \
+prefer 15-18.
+
+Return only the blueprint fields defined by the schema - no prose commentary outside them."""
+
+BLUEPRINT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "concept": {
+            "type": "object",
+            "properties": {
+                "theme": {"type": "string"},
+                "mood": {"type": "array", "items": {"type": "string"}},
+                "cultural_notes": {"type": "string"},
+                "art_style": {"type": "string"},
+            },
+            "required": ["theme", "mood", "cultural_notes", "art_style"],
+            "additionalProperties": False,
+        },
+        "composition": {
+            "type": "object",
+            "properties": {
+                "hero_subject": {
+                    "type": "object",
+                    "properties": {"description": {"type": "string"}, "position": {"type": "string"}},
+                    "required": ["description", "position"], "additionalProperties": False,
+                },
+                "secondary_elements": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"description": {"type": "string"}, "position": {"type": "string"}},
+                        "required": ["description", "position"], "additionalProperties": False,
+                    },
+                },
+                "atmosphere": {
+                    "type": "object",
+                    "properties": {"background": {"type": "string"}, "lighting": {"type": "string"}},
+                    "required": ["background", "lighting"], "additionalProperties": False,
+                },
+                "negative_space": {"type": "array", "items": {"type": "string"}},
+                "depth_layers": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["hero_subject", "secondary_elements", "atmosphere", "negative_space", "depth_layers"],
+            "additionalProperties": False,
+        },
+        "typography": {
+            "type": "object",
+            "properties": {
+                "greeting": {
+                    "type": "object",
+                    "properties": {
+                        "placement": {"type": "string"},
+                        "treatment": {"type": "string"},
+                        "max_height_pct": {"type": "number"},
+                    },
+                    "required": ["placement", "treatment", "max_height_pct"], "additionalProperties": False,
+                },
+                "supporting_line": {
+                    "type": "object",
+                    "properties": {"placement": {"type": "string"}, "treatment": {"type": "string"}},
+                    "required": ["placement", "treatment"], "additionalProperties": False,
+                },
+            },
+            "required": ["greeting", "supporting_line"],
+            "additionalProperties": False,
+        },
+        "logo_safe_zone": {
+            "type": "object",
+            "properties": {"position": {"type": "string"}, "clear_space_pct": {"type": "number"}},
+            "required": ["position", "clear_space_pct"], "additionalProperties": False,
+        },
+        "strict_exclusions": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["concept", "composition", "typography", "logo_safe_zone", "strict_exclusions"],
+    "additionalProperties": False,
+}
+
+
+def _validate_blueprint(blueprint: dict) -> dict:
+    """Lightweight lint pass, not a full geometry checker (positions are
+    free-text descriptions, not coordinates) - clamps the one field we can
+    meaningfully enforce numerically, and fills safe defaults for anything
+    unexpectedly missing so a slightly malformed response still degrades
+    gracefully instead of raising deep in the render path."""
+    typography = blueprint.setdefault("typography", {})
+    greeting = typography.setdefault("greeting", {})
+    try:
+        greeting["max_height_pct"] = min(float(greeting.get("max_height_pct", 18)), 20.0)
+    except (TypeError, ValueError):
+        greeting["max_height_pct"] = 18.0
+    greeting.setdefault("placement", "lower-left third")
+    typography.setdefault("supporting_line", {"placement": "beneath greeting", "treatment": "small sans-serif"})
+    blueprint.setdefault("logo_safe_zone", {"position": "upper-left corner", "clear_space_pct": 8})
+    blueprint.setdefault("strict_exclusions", [])
+    blueprint["strict_exclusions"] = list(blueprint["strict_exclusions"]) + [
+        "no white or opaque text card", "no banner", "no floating panel", "no oversized typography",
+    ]
+    return blueprint
+
+
+async def run_greeting_blueprint_agent(festival: dict, greeting: Optional[dict] = None,
+                                        channel: str = DEFAULT_CHANNEL) -> Optional[dict]:
+    """Returns a validated creative blueprint dict (see BLUEPRINT_SCHEMA), or
+    None on any failure - caller falls back to the older free-prose prompt
+    agent when this isn't available."""
+    try:
+        client = agents.get_client()
+    except Exception as e:
+        logger.warning(f"[BLUEPRINT] client unavailable: {e}")
+        return None
+
+    fmt = FORMAT_SPECS.get(channel, FORMAT_SPECS[DEFAULT_CHANNEL])
+    greeting_text = (greeting or {}).get("tagline") or (greeting or {}).get("whatsapp_message") or f"Happy {festival['name']}"
+    user = (
+        f"Festival / occasion: {festival['name']}\n"
+        f"What it marks: {festival['blurb']}\n"
+        f"Category: {festival['category']}\n"
+        f"Channel: {channel} ({fmt['ratio']} aspect ratio, {fmt['width']}x{fmt['height']}px)\n"
+        f"Language: English\n"
+        f"Greeting text to plan space for (composite locally afterward - do not draw it into the image "
+        f"yourself, this call only plans WHERE it goes): {greeting_text}\n"
+        f"Brand: ISME Bangalore, a business school\n"
+        f"Brand personality: human-centred AI, innovative, warm, premium\n"
+        f"Creative freedom: high - choose the concept and art style yourself per the brief\n"
+        f"Curated colour palette to favour as a starting point (not mandatory): {', '.join(festival['palette'])}"
+    )
+    try:
+        response = await agents._create(
+            client, system=BLUEPRINT_SYSTEM, user=user, schema=BLUEPRINT_SCHEMA, max_tokens=2000,
+        )
+        blueprint = agents.extract_json_object(agents._first_text(response))
+        return _validate_blueprint(blueprint)
+    except Exception as e:
+        logger.warning(f"[BLUEPRINT] Claude call failed: {e}")
+        return None
+
+
+def build_prompt_from_blueprint(festival: dict, blueprint: dict, channel: str = DEFAULT_CHANNEL) -> str:
+    """Deterministic template - no free-writing - that assembles the actual
+    image-generation prompt from a validated blueprint's fields."""
+    fmt = FORMAT_SPECS.get(channel, FORMAT_SPECS[DEFAULT_CHANNEL])
+    concept = blueprint.get("concept", {})
+    comp = blueprint.get("composition", {})
+    hero = comp.get("hero_subject", {})
+    secondary = comp.get("secondary_elements", [])
+    atmosphere = comp.get("atmosphere", {})
+    negative_space = comp.get("negative_space", [])
+    depth_layers = comp.get("depth_layers", [])
+    exclusions = blueprint.get("strict_exclusions", [])
+
+    secondary_txt = "; ".join(f"{e.get('description', '')} ({e.get('position', '')})" for e in secondary) or "none"
+    parts = [
+        f"A premium, editorial-quality {concept.get('art_style', 'illustration')} celebrating "
+        f"{festival['name']} for ISME Bangalore, a business school addressing students, faculty, parents and "
+        f"corporate partners - {', '.join(concept.get('mood', []) or ['warm', 'premium'])} in mood, sophisticated "
+        f"and never generic clip-art or a stock-photo template.",
+        f"Central concept: {concept.get('theme', festival['blurb'])}.",
+    ]
+    if concept.get("cultural_notes"):
+        parts.append(f"Cultural context: {concept['cultural_notes']}.")
+    parts.append(f"Hero subject: {hero.get('description', festival['name'])}, positioned at {hero.get('position', 'centre')}.")
+    parts.append(f"Secondary elements: {secondary_txt}.")
+    parts.append(f"Atmosphere/background: {atmosphere.get('background', 'a softly lit festive scene')}. "
+                 f"Lighting: {atmosphere.get('lighting', 'warm, directional, cinematic')}.")
+    if depth_layers:
+        parts.append(f"Depth, front to back: {' -> '.join(depth_layers)}.")
+    parts.append(
+        f"Reserve genuinely clean, uncluttered negative space at: {', '.join(negative_space) or 'one clear region of the frame'} "
+        f"- no object, texture or busy detail should cross into these areas, they exist so text can be placed there "
+        f"afterward without a background box."
+    )
+    parts.append(
+        f"Colour palette to favour: {', '.join(festival['palette'])}, plus complementary accents, at least 4-5 "
+        f"distinct hues with good contrast between them, no flat single-hue wash."
+    )
+    parts.append(
+        f"{fmt['ratio']} aspect ratio composition ({fmt['width']}x{fmt['height']}px), important content kept away "
+        f"from the edges, must read clearly on a mobile screen."
+    )
+    parts.append(
+        "Premium advertising-campaign quality, editorial art direction, realistic lighting and material texture, "
+        "refined colour grading, balanced composition, clean edges, high-resolution finish - intentional and "
+        "handcrafted, not automatically generated."
+    )
+    parts.append(
+        "STRICT: absolutely no text, no words, no letters, no numerals, no logos, no watermarks, no human faces "
+        "in close-up - the greeting text and logo are composited separately afterward, this image is the "
+        "illustrated background only. " + "; ".join(exclusions) + "."
+    )
+    return " ".join(parts)
+
+
+def _call_openai_image_api(prompt: str, size: str = "1024x1024") -> Optional[bytes]:
     api_key = os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
         return None
@@ -428,7 +705,7 @@ def _call_openai_image_api(prompt: str) -> Optional[bytes]:
             "model": model,
             "prompt": prompt,
             "n": 1,
-            "size": "1024x1024",
+            "size": size,
             "quality": "high",
         }).encode("utf-8")
         req = urllib.request.Request(
@@ -448,32 +725,44 @@ def _call_openai_image_api(prompt: str) -> Optional[bytes]:
     return None
 
 
-async def generate_ai_background(festival: dict, seed: Optional[int] = None, greeting: Optional[dict] = None) -> Optional[Image.Image]:
-    """Best-effort: returns a 1080x1080 RGBA illustration for this festival, or
-    None if OPENAI_API_KEY isn't set or the call fails for any reason. Uses the
-    same default seed formula as render_greeting_image so the two stay
-    correlated without the caller having to pass anything explicitly.
+async def generate_ai_background(festival: dict, seed: Optional[int] = None, greeting: Optional[dict] = None,
+                                  channel: str = DEFAULT_CHANNEL) -> tuple:
+    """Best-effort: returns (image, blueprint) for this festival at the given
+    channel's native aspect ratio, or (None, None) if OPENAI_API_KEY isn't set
+    or every tier below fails. blueprint is the structured creative plan used
+    to build the prompt (or None if only the older/local prompt tiers ran) -
+    render_greeting_image reads it to decide where to draw text/logo so the
+    two stay in sync.
 
-    The actual OpenAI prompt is produced by Claude (run_image_prompt_agent),
-    which turns this festival's brief into a detailed, art-directed prompt
-    rather than filling in a fixed local template. If that call is
-    unavailable or fails, falls back to the local template (_ai_background_prompt)
-    so image generation still degrades gracefully rather than failing outright."""
+    Three-tier prompt fallback, each best-effort and independent of the last:
+      1. run_greeting_blueprint_agent + build_prompt_from_blueprint - structured
+         Claude blueprint (concept/composition/typography/logo), deterministically
+         templated into the final prompt (Sep 2026 art-direction spec).
+      2. run_image_prompt_agent - Claude free-prose prompt (previous approach).
+      3. _ai_background_prompt - local fixed template, no network call.
+    """
     if not os.environ.get("OPENAI_API_KEY"):
-        return None
+        return None, None
+    fmt = FORMAT_SPECS.get(channel, FORMAT_SPECS[DEFAULT_CHANNEL])
     rng = random.Random(seed if seed is not None else hash(festival["name"]) % 10_000)
-    prompt = await run_image_prompt_agent(festival, greeting)
-    if not prompt:
-        prompt = _ai_background_prompt(festival, rng)
-    raw = await asyncio.to_thread(_call_openai_image_api, prompt)
+
+    blueprint = await run_greeting_blueprint_agent(festival, greeting, channel)
+    if blueprint:
+        prompt = build_prompt_from_blueprint(festival, blueprint, channel)
+    else:
+        prompt = await run_image_prompt_agent(festival, greeting)
+        if not prompt:
+            prompt = _ai_background_prompt(festival, rng)
+
+    raw = await asyncio.to_thread(_call_openai_image_api, prompt, fmt["openai_size"])
     if not raw:
-        return None
+        return None, blueprint
     try:
         img = Image.open(BytesIO(raw)).convert("RGBA")
-        return img.resize((IMAGE_SIZE, IMAGE_SIZE), Image.LANCZOS)
+        return _cover_resize(img, fmt["width"], fmt["height"]), blueprint
     except Exception as e:
         logger.warning(f"[AI BACKGROUND] decode failed: {e}")
-        return None
+        return None, blueprint
 
 # -----------------------------------------------------------------------
 # Festival calendar (2026) - name, date, category, one-line blurb, and the
@@ -629,6 +918,50 @@ def _draw_tracked(draw, x: float, y: float, text: str, font, fill, tracking: flo
         x += draw.textlength(ch, font=font) + tracking
 
 
+def _resolve_zone(placement: str) -> dict:
+    """Maps a blueprint's free-text placement description (e.g. "left-center",
+    "lower area", "upper-left third") to an anchor fraction of canvas
+    width/height plus a text alignment - a small, forgiving keyword match
+    since these are natural-language descriptions, not coordinates. Defaults
+    to a lower-left placement (the spec's own worked-example pattern) when
+    nothing recognisable is found."""
+    p = (placement or "").lower()
+    if "right" in p:
+        x, align = 0.92, "right"
+    elif "center" in p and "left" not in p and "upper" not in p and "lower" not in p:
+        x, align = 0.5, "center"
+    else:
+        x, align = 0.08, "left"
+    if "upper" in p or "top" in p:
+        y = 0.14
+    elif "lower" in p or "bottom" in p or "below" in p:
+        y = 0.78
+    else:
+        y = 0.5
+    return {"x": x, "y": y, "align": align}
+
+
+def _resolve_corner(placement: str) -> tuple:
+    """Maps a blueprint's logo_safe_zone.position text to an (h, v) corner
+    pair, defaulting to upper-left (the spec's worked-example logo spot)."""
+    p = (placement or "").lower()
+    h = "right" if "right" in p else "left"
+    v = "lower" if ("lower" in p or "bottom" in p) else "upper"
+    return h, v
+
+
+def _text_scrim(size: tuple, center: tuple, radius: float, max_alpha: int = 130) -> Image.Image:
+    """A soft, edgeless radial darkening behind a text block - the spec's
+    'restrained translucent treatment' for contrast, deliberately not a
+    card/box: no defined edges, no uniform fill, just enough falloff that
+    text reads clearly over whatever the illustration put there."""
+    layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    cx, cy = center
+    d.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=(10, 8, 6, max_alpha))
+    return layer.filter(ImageFilter.GaussianBlur(radius * 0.6))
+
+
 def _calmer_corner(img: Image.Image) -> str:
     """Which top corner ('left' or 'right') has less visual complexity, so the
     logo badge can sit somewhere that doesn't collide with the busiest part
@@ -675,20 +1008,6 @@ def _blob_glow(size, center, radius, color, alpha=95, blur=None):
     cx, cy = center
     d.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=(*color, alpha))
     return layer.filter(ImageFilter.GaussianBlur(blur if blur else radius * 0.55))
-
-
-def _rounded_card_with_shadow(size, radius, fill=(255, 255, 255, 240)):
-    w, h = size
-    pad = 44
-    canvas = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
-    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shadow)
-    sd.rounded_rectangle([pad, pad + 16, pad + w, pad + h + 16], radius=radius, fill=(0, 0, 0, 110))
-    canvas.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(22)))
-    card = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    ImageDraw.Draw(card).rounded_rectangle([pad, pad, pad + w, pad + h], radius=radius, fill=fill)
-    canvas.alpha_composite(card)
-    return canvas, pad
 
 
 def _flame(d, x, y, scale=1.0):
@@ -861,29 +1180,44 @@ def _wrap_text(draw, text, fnt, max_width):
     return lines
 
 
-def _fit_headline(draw, text, max_width, style="sans", start_size=92, min_size=54):
+def _fit_headline(draw, text, max_width, style="sans", start_size=92, min_size=40, max_height=None):
+    """Shrinks the font until the wrapped headline fits both max_width (<=2
+    lines) and, if given, max_height (the spec's festival-name-<=~18%-of-
+    canvas-height rule) - whichever constraint binds first."""
     size = start_size
     while size >= min_size:
         fnt = _headline_font(style, size)
         lines = _wrap_text(draw, text, fnt, max_width)
-        if len(lines) <= 2:
+        block_h = len(lines) * int(size * 1.12)
+        if len(lines) <= 2 and (max_height is None or block_h <= max_height):
             return fnt, lines, size
-        size -= 6
+        size -= 4
     fnt = _headline_font(style, min_size)
     return fnt, _wrap_text(draw, text, fnt, max_width), min_size
 
 
 def render_greeting_image(festival: dict, headline: str, subline: str = "From all of us at ISME Bangalore",
                            tagline: str = "", seed: Optional[int] = None,
-                           ai_background: Optional[Image.Image] = None) -> bytes:
-    """Festive greeting card, 1080x1080 PNG. If ai_background (a 1080x1080 RGBA
-    illustration from generate_ai_background) is supplied, it's used as the
-    scene and the local gradient/motif generator is skipped; the glass card,
-    headline text and ISME logo badge are always rendered locally either way.
-    Layout/typography (headline font, card tint, which corner the logo sits
-    in) vary per-festival - deterministic per festival via the seeded rng, so
-    the calendar doesn't look like the same template with a new photo."""
+                           ai_background: Optional[Image.Image] = None,
+                           channel: str = DEFAULT_CHANNEL, blueprint: Optional[dict] = None) -> bytes:
+    """Festive greeting image, sized per channel (see FORMAT_SPECS - no longer
+    always a 1:1 square). If ai_background is supplied it's used as the scene
+    and the local gradient/motif generator is skipped; the ISME logo badge and
+    greeting text are always rendered locally either way.
+
+    Per the Sep 2026 art-direction spec: no opaque text card/banner. Text is
+    drawn directly onto the artwork's own negative space, with only a soft
+    edgeless scrim behind it for contrast where needed - never a solid box.
+    When a blueprint (from run_greeting_blueprint_agent) is available, its
+    typography.greeting.placement and logo_safe_zone.position decide WHERE
+    text/logo land; otherwise a sensible lower-left default is used, matching
+    the spec's own worked example. Layout/typography (headline font, which
+    zone text lands in when no blueprint, motif) vary per-festival -
+    deterministic via the seeded rng, so the calendar doesn't look like the
+    same template with a new photo."""
     rng = random.Random(seed if seed is not None else hash(festival["name"]) % 10_000)
+    fmt = FORMAT_SPECS.get(channel, FORMAT_SPECS[DEFAULT_CHANNEL])
+    W, H = fmt["width"], fmt["height"]
     palette = festival["palette"]
     motif = festival["motif"]
     luma = sum(_hex2rgb(palette[-1]))
@@ -892,33 +1226,30 @@ def render_greeting_image(festival: dict, headline: str, subline: str = "From al
 
     if ai_background is not None:
         bg = ai_background.convert("RGBA")
-        if bg.size != (IMAGE_SIZE, IMAGE_SIZE):
-            bg = bg.resize((IMAGE_SIZE, IMAGE_SIZE), Image.LANCZOS)
-        # Gentle bottom-up darkening so the white card/logo pill keep contrast
-        # against whatever the illustration put behind them.
-        shade = Image.new("L", (IMAGE_SIZE, IMAGE_SIZE), 0)
-        sd = ImageDraw.Draw(shade)
-        for y in range(IMAGE_SIZE):
-            t = max(0.0, (y - IMAGE_SIZE * 0.42) / (IMAGE_SIZE * 0.58))
-            sd.line([(0, y), (IMAGE_SIZE, y)], fill=int(60 * t))
-        overlay = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE), (10, 8, 6, 0))
-        overlay.putalpha(shade)
-        bg.alpha_composite(overlay)
+        if bg.size != (W, H):
+            bg = _cover_resize(bg, W, H)
     else:
-        bg = _diagonal_gradient((IMAGE_SIZE, IMAGE_SIZE), palette).convert("RGBA")
-        bg.alpha_composite(_blob_glow((IMAGE_SIZE, IMAGE_SIZE), (IMAGE_SIZE * 0.08, IMAGE_SIZE * 0.06), 340, _hex2rgb(palette[-1])))
-        bg.alpha_composite(_blob_glow((IMAGE_SIZE, IMAGE_SIZE), (IMAGE_SIZE * 0.95, IMAGE_SIZE * 0.98), 380, _hex2rgb(palette[0]), alpha=90))
-        motif_layer = Image.new("RGBA", (IMAGE_SIZE, IMAGE_SIZE), (0, 0, 0, 0))
+        bg = _diagonal_gradient((W, H), palette).convert("RGBA")
+        bg.alpha_composite(_blob_glow((W, H), (W * 0.08, H * 0.06), max(W, H) * 0.31, _hex2rgb(palette[-1])))
+        bg.alpha_composite(_blob_glow((W, H), (W * 0.95, H * 0.98), max(W, H) * 0.35, _hex2rgb(palette[0]), alpha=90))
+        motif_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         motif_layer = _MOTIFS.get(motif, _motif_bloom)(motif_layer, rng, accent)
         bg.alpha_composite(motif_layer)
 
-    # --- ISME logo badge: compact, sits in whichever top corner of the
-    # artwork is visually calmer, instead of always the same bottom pill. ---
+    # --- Text zone: where the blueprint (or, lacking one, a sensible default)
+    # says the greeting goes. Resolved before drawing anything so the logo
+    # and scrim can avoid colliding with it. ---
+    greeting_placement = ((blueprint or {}).get("typography", {}).get("greeting", {}) or {}).get("placement", "lower-left third")
+    max_height_pct = ((blueprint or {}).get("typography", {}).get("greeting", {}) or {}).get("max_height_pct", 18)
+    zone = _resolve_zone(greeting_placement)
+
+    # --- ISME logo badge: compact, sits in the blueprint's logo safe zone if
+    # one was planned, otherwise whichever top corner is visually calmer. ---
     logo = Image.open(LOGO_PATH).convert("RGBA")
-    logo_w = 300
+    logo_w = max(220, int(W * 0.26))
     logo_h = int(logo_w / (logo.width / logo.height))
     logo_small = logo.resize((logo_w, logo_h), Image.LANCZOS)
-    pill_pad_x, pill_pad_y = 26, 18
+    pill_pad_x, pill_pad_y = 24, 16
     pill_w, pill_h = logo_w + pill_pad_x * 2, logo_h + pill_pad_y * 2
     shadow_margin = 18
     badge = Image.new("RGBA", (pill_w + shadow_margin * 2, pill_h + shadow_margin * 2), (0, 0, 0, 0))
@@ -931,48 +1262,68 @@ def render_greeting_image(festival: dict, headline: str, subline: str = "From al
         [shadow_margin, shadow_margin, shadow_margin + pill_w, shadow_margin + pill_h],
         radius=pill_h // 2, fill=(255, 255, 255, 255))
     badge.alpha_composite(logo_small, (shadow_margin + pill_pad_x, shadow_margin + pill_pad_y))
-    corner = _calmer_corner(bg)
-    corner_margin = 56
-    badge_x = corner_margin if corner == "left" else IMAGE_SIZE - badge.width - corner_margin
-    bg.alpha_composite(badge, (badge_x, corner_margin))
+    logo_zone = (blueprint or {}).get("logo_safe_zone", {}).get("position")
+    h_pos, v_pos = _resolve_corner(logo_zone) if logo_zone else (_calmer_corner(bg), "upper")
+    corner_margin = 48
+    badge_x = corner_margin if h_pos == "left" else W - badge.width - corner_margin
+    badge_y = corner_margin if v_pos == "upper" else H - badge.height - corner_margin
+    bg.alpha_composite(badge, (badge_x, badge_y))
 
-    # --- Greeting card: anchored low (art gets the top of the frame), with a
-    # subtle one-line eyebrow above the headline and a per-festival tint/font
-    # so cards don't all read as the same template. ---
+    # --- Greeting text: drawn directly on the artwork's negative space, no
+    # card/banner. A soft edgeless scrim sits behind it only for contrast. ---
     tmp_draw = ImageDraw.Draw(bg)
-    max_text_w = IMAGE_SIZE - 260
-    hd_font, head_lines, hsize = _fit_headline(tmp_draw, headline, max_text_w, style=headline_style)
-    sub_font = _font("Poppins-Medium", 32)
-    eyebrow_font = _font("Poppins-Regular", 27)
+    max_text_w = int(W * 0.42) if zone["align"] != "center" else int(W * 0.78)
+    max_headline_h = H * (min(max_height_pct, 20) / 100.0)
+    hd_font, head_lines, hsize = _fit_headline(tmp_draw, headline, max_text_w, style=headline_style, max_height=max_headline_h)
+    sub_font_size = max(24, int(hsize * 0.32))
+    sub_font = _font("Poppins-Medium", sub_font_size)
+    eyebrow_font = _font("Poppins-Regular", max(20, int(hsize * 0.26)))
     eyebrow_text = tagline.strip().upper() if tagline else ""
 
     line_h = int(hsize * 1.12)
-    inner_pad = 46
-    eyebrow_block_h = 48 if eyebrow_text else 0
-    sub_block_h = 54
-    card_h = inner_pad + eyebrow_block_h + len(head_lines) * line_h + sub_block_h + inner_pad - 24
-    card_w = IMAGE_SIZE - 180
+    eyebrow_block_h = int(sub_font_size * 1.4) if eyebrow_text else 0
+    sub_block_h = int(sub_font_size * 1.5)
+    block_h = eyebrow_block_h + len(head_lines) * line_h + sub_block_h
+    block_w = max([tmp_draw.textlength(line, font=hd_font) for line in head_lines] + [tmp_draw.textlength(subline, font=sub_font)])
 
-    tint = tuple(int(255 * 0.9 + c * 0.1) for c in _hex2rgb(accent))
-    card, pad = _rounded_card_with_shadow((card_w, card_h), 40, fill=(*tint, 242))
-    cx = (IMAGE_SIZE - card.width) // 2
-    bottom_margin = 64
-    cy = IMAGE_SIZE - card.height - bottom_margin
-    bg.alpha_composite(card, (cx, cy))
+    anchor_x = zone["x"] * W
+    anchor_y = zone["y"] * H
+    if zone["align"] == "left":
+        text_left = anchor_x
+    elif zone["align"] == "right":
+        text_left = anchor_x - block_w
+    else:
+        text_left = anchor_x - block_w / 2
+    text_top = anchor_y - block_h / 2
+    text_top = max(40, min(text_top, H - block_h - 40))
+
+    scrim_cx, scrim_cy = text_left + block_w / 2, text_top + block_h / 2
+    scrim_radius = max(block_w, block_h) * 0.75 + 60
+    bg.alpha_composite(_text_scrim((W, H), (scrim_cx, scrim_cy), scrim_radius))
 
     d = ImageDraw.Draw(bg)
-    ty = cy + pad + inner_pad - 24
-    muted = tuple(int(c * 0.5 + 125 * 0.5) for c in _hex2rgb(accent))
+    ty = text_top
+    light_text = (250, 248, 244, 255)
+    muted = tuple(int(c * 0.35 + 240 * 0.65) for c in _hex2rgb(accent))
     if eyebrow_text:
         ew = _tracked_width(d, eyebrow_text, eyebrow_font, tracking=3)
-        _draw_tracked(d, (IMAGE_SIZE - ew) / 2, ty, eyebrow_text, eyebrow_font, (*muted, 235), tracking=3)
+        ex = text_left if zone["align"] != "center" else scrim_cx - ew / 2
+        if zone["align"] == "right":
+            ex = text_left + block_w - ew
+        _draw_tracked(d, ex, ty, eyebrow_text, eyebrow_font, (*muted, 235), tracking=3)
         ty += eyebrow_block_h
     for line in head_lines:
         tw = d.textlength(line, font=hd_font)
-        d.text(((IMAGE_SIZE - tw) / 2, ty), line, font=hd_font, fill=(28, 22, 18, 255))
+        lx = text_left if zone["align"] != "center" else scrim_cx - tw / 2
+        if zone["align"] == "right":
+            lx = text_left + block_w - tw
+        d.text((lx, ty), line, font=hd_font, fill=light_text)
         ty += line_h
     tw = d.textlength(subline, font=sub_font)
-    d.text(((IMAGE_SIZE - tw) / 2, ty + 10), subline, font=sub_font, fill=(*_hex2rgb(accent), 255))
+    slx = text_left if zone["align"] != "center" else scrim_cx - tw / 2
+    if zone["align"] == "right":
+        slx = text_left + block_w - tw
+    d.text((slx, ty + int(sub_font_size * 0.3)), subline, font=sub_font, fill=(*_hex2rgb(accent), 255))
 
     out = BytesIO()
     bg.convert("RGB").save(out, format="PNG", optimize=True)
