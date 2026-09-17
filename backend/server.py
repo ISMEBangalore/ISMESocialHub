@@ -981,7 +981,7 @@ async def run_festival_greeting(run_id: str, festival: dict):
         text = await fest_agents.run_greeting_text_agent(festival)
         message, tagline = text["whatsapp_message"], text["tagline"]
         headline = f"Happy {festival['name']}!"
-        ai_background = await fest_agents.generate_ai_background(festival)
+        ai_background = await fest_agents.generate_ai_background(festival, greeting=text)
         image_bytes = await asyncio.to_thread(
             fest_agents.render_greeting_image, festival, headline, tagline=tagline, ai_background=ai_background)
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
